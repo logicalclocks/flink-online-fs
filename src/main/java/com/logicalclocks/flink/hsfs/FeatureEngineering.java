@@ -23,8 +23,6 @@ public class FeatureEngineering {
 
   public void run(String brokers, String sourceTopic, String dbURL, String username, String password) throws Exception {
 
-    // Replace with the correct endpoint based on your setup (ip and project name)
-    // Replace with Username and Password
     JDBCOptions.Builder jdbcOptionsBuilder = JDBCOptions.builder()
         .setDBUrl(dbURL)
         .setUsername(username)

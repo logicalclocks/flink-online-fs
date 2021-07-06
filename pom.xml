@@ -276,7 +276,7 @@
                             <goal>idl-protocol</goal>
                         </goals>
                         <configuration>
-                            <sourceDirectory>/Users/davitbz/IdeaProjects/flink-online-fs/src/main/resources/avro</sourceDirectory>
+                            <sourceDirectory>${project.basedir}/src/main/resources/avro</sourceDirectory>
                             <stringType>String</stringType>
                             <createSetters>true</createSetters>
                             <enableDecimalLogicalType>true</enableDecimalLogicalType>

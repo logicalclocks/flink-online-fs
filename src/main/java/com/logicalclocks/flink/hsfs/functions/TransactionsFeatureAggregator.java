@@ -10,7 +10,7 @@ import org.apache.flink.util.Collector;
 import org.apache.commons.math.stat.descriptive.DescriptiveStatistics;
 
 /**
- *  User-defined WindowFunction to compute the average temperature of SensorReadings
+ *  WindowFunction to compute Transaction aggregates
  */
 public class TransactionsFeatureAggregator implements WindowFunction<SourceTransaction,
     Tuple4<Long, Long, Double, Double>, Long, TimeWindow> {
@@ -26,17 +26,10 @@ public class TransactionsFeatureAggregator implements WindowFunction<SourceTrans
       cnt++;
       descriptiveStatistics.addValue(r.getAmount());
     }
-    /*
-    descriptiveStatistics.getMean();
-    descriptiveStatistics.getVariance();
-    descriptiveStatistics.getPercentile(0.25);
-    descriptiveStatistics.getPercentile(0.50);
-    descriptiveStatistics.getPercentile(0.75);
 
-     */
     double avg = descriptiveStatistics.getSum() / cnt;
 
-    // emit a SensorReading with the average temperature
+    // emit a computed aggregates
     collector.collect(new Tuple4<Long, Long, Double, Double>(key, cnt, avg, descriptiveStatistics.getStandardDeviation()));
   }
 }
