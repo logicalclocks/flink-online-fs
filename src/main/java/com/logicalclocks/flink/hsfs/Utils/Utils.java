@@ -1,4 +1,4 @@
-package com.logicalclocks.flink.hsfs.Utils;
+package com.logicalclocks.flink.hsfs.utils;
 
 import com.logicalclocks.flink.hsfs.schemas.OneHourAggregatedTransactions;
 import com.logicalclocks.flink.hsfs.schemas.SourceTransaction;
@@ -6,9 +6,6 @@ import com.logicalclocks.flink.hsfs.schemas.SourceTransactionSchema;
 import com.logicalclocks.flink.hsfs.schemas.TenMinAggregatedTransactions;
 import com.logicalclocks.flink.hsfs.schemas.TwelveHourAggregatedTransactions;
 import com.logicalclocks.flink.hsfs.synk.AvroKafkaSink;
-import com.sun.org.apache.bcel.internal.generic.ARETURN;
-import lombok.Generated;
-import lombok.SneakyThrows;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericRecord;
@@ -27,7 +24,6 @@ import org.apache.flink.table.api.Table;
 import org.apache.flink.table.api.TableSchema;
 import org.apache.flink.table.api.java.StreamTableEnvironment;
 import org.apache.flink.table.types.DataType;
-import org.apache.kafka.common.protocol.types.Field;
 
 import java.io.File;
 import java.text.ParseException;

@@ -1,6 +1,6 @@
 package com.logicalclocks.flink.hsfs;
 
-import com.logicalclocks.flink.hsfs.Utils.Utils;
+import com.logicalclocks.flink.hsfs.utils.Utils;
 import com.logicalclocks.flink.hsfs.functions.TransactionsFeatureAggregator;
 import com.logicalclocks.flink.hsfs.schemas.SourceTransaction;
 import org.apache.flink.api.java.io.jdbc.JDBCOptions;
