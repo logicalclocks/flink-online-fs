@@ -10,19 +10,17 @@ import java.util.List;
 
 public class CreateGenericRecord implements MapFunction<Tuple4<Long, Long, Double, Double>, GenericRecord> {
 
-  private String userSchema;
+  private Schema schema;
   private List<String> fields;
 
-  public CreateGenericRecord(String userSchema, List<String> fields) {
-    this.userSchema = userSchema;
+  public CreateGenericRecord(Schema schema, List<String> fields) {
+    this.schema = schema;
     this.fields = fields;
   }
 
   @Override
   public GenericRecord map(Tuple4<Long, Long, Double, Double> aggregations) throws Exception {
-    final Schema.Parser parser = new Schema.Parser();
-    final Schema schema = parser.parse(userSchema);
-    final GenericData.Record record = new GenericData.Record(schema);
+    final GenericData.Record record = new GenericData.Record(this.schema);
     record.put(fields.get(0), aggregations.getField(0));
     record.put(fields.get(1), aggregations.getField(1));
     record.put(fields.get(2), aggregations.getField(2));

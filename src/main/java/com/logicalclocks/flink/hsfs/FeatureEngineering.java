@@ -1,19 +1,18 @@
 package com.logicalclocks.flink.hsfs;
 
 import com.logicalclocks.flink.hsfs.synk.AvroKafkaSink;
-import com.logicalclocks.flink.hsfs.synk.CreateGenericRecord;
+import com.logicalclocks.flink.hsfs.synk.GenericRecordMapFunction;
 import com.logicalclocks.flink.hsfs.utils.Utils;
 import com.logicalclocks.flink.hsfs.functions.TransactionsFeatureAggregator;
 import com.logicalclocks.flink.hsfs.schemas.SourceTransaction;
 
-import org.apache.avro.generic.GenericRecord;
+import org.apache.avro.Schema;
 
 import org.apache.flink.api.java.tuple.Tuple4;
 import org.apache.flink.streaming.api.TimeCharacteristic;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.windowing.assigners.TumblingEventTimeWindows;
-import org.apache.flink.streaming.api.windowing.assigners.TumblingProcessingTimeWindows;
 import org.apache.flink.streaming.api.windowing.time.Time;
 
 import org.apache.commons.cli.CommandLine;
@@ -47,18 +46,19 @@ public class FeatureEngineering {
             .apply(new TransactionsFeatureAggregator());
 
     // Get generic record for 1 hour aggregation fg
-    String tenMinschema = "{\"type\":\"record\",\"name\":\"card_transactions_10m_agg_1\",\"namespace\":\"transaction_featurestore.db\",\"fields\":[{\"name\":\"cc_num\",\"type\":[\"null\",\"long\"]},{\"name\":\"num_trans_per_10m\",\"type\":[\"null\",\"long\"]},{\"name\":\"avg_amt_per_10m\",\"type\":[\"null\",\"double\"]},{\"name\":\"stdev_amt_per_10m\",\"type\":[\"null\",\"double\"]}]}";
-    DataStream<GenericRecord> tenMinRecord =
+    String tenMinschemaStr = "{\"type\":\"record\",\"name\":\"card_transactions_10m_agg_1\",\"namespace\":\"transaction_featurestore.db\",\"fields\":[{\"name\":\"cc_num\",\"type\":[\"null\",\"long\"]},{\"name\":\"num_trans_per_10m\",\"type\":[\"null\",\"long\"]},{\"name\":\"avg_amt_per_10m\",\"type\":[\"null\",\"double\"]},{\"name\":\"stdev_amt_per_10m\",\"type\":[\"null\",\"double\"]}]}";
+    final Schema tenMinschema = new Schema.Parser().parse(tenMinschemaStr);
+    DataStream<byte[]> tenMinRecord =
         tenMinFeatures.map(
-            new CreateGenericRecord(tenMinschema,
+            new GenericRecordMapFunction(tenMinschema,
                 Arrays.asList("cc_num","num_trans_per_10m","avg_amt_per_10m","stdev_amt_per_10m"))
         );
 
     //send to online fg topic
     String tenMinFgTopic = "119_14_card_transactions_10m_agg_1_onlinefs";
     List<String> tenMinFgPk = Arrays.asList("cc_num");
-    tenMinRecord.addSink(new FlinkKafkaProducer<GenericRecord>(tenMinFgTopic,
-        new AvroKafkaSink(tenMinschema, String.join(",", tenMinFgPk), tenMinFgTopic), utils.getKafkaProperties(brokers),
+    tenMinRecord.addSink(new FlinkKafkaProducer<byte[]>(tenMinFgTopic,
+        new AvroKafkaSink(String.join(",", tenMinFgPk), tenMinFgTopic), utils.getKafkaProperties(brokers),
         FlinkKafkaProducer.Semantic.AT_LEAST_ONCE));
 
     // compute 1 hour aggregations
@@ -67,15 +67,16 @@ public class FeatureEngineering {
             .window(TumblingEventTimeWindows.of(Time.minutes(60)))
             .apply(new TransactionsFeatureAggregator());
     // Get generic record for 1 hour aggregation fg
-    String oneHourSchema = "{\"type\":\"record\",\"name\":\"card_transactions_1h_agg_1\",\"namespace\":\"transaction_featurestore.db\",\"fields\":[{\"name\":\"cc_num\",\"type\":[\"null\",\"long\"]},{\"name\":\"num_trans_per_1h\",\"type\":[\"null\",\"long\"]},{\"name\":\"avg_amt_per_1h\",\"type\":[\"null\",\"double\"]},{\"name\":\"stdev_amt_per_1h\",\"type\":[\"null\",\"double\"]}]}";
-    DataStream<GenericRecord> oneHourRecord =
-        oneHourFeatures.map(new CreateGenericRecord(oneHourSchema,
+    String oneHourSchemaStr = "{\"type\":\"record\",\"name\":\"card_transactions_1h_agg_1\",\"namespace\":\"transaction_featurestore.db\",\"fields\":[{\"name\":\"cc_num\",\"type\":[\"null\",\"long\"]},{\"name\":\"num_trans_per_1h\",\"type\":[\"null\",\"long\"]},{\"name\":\"avg_amt_per_1h\",\"type\":[\"null\",\"double\"]},{\"name\":\"stdev_amt_per_1h\",\"type\":[\"null\",\"double\"]}]}";
+    final Schema oneHourSchema = new Schema.Parser().parse(oneHourSchemaStr);
+    DataStream<byte[]> oneHourRecord =
+        oneHourFeatures.map(new GenericRecordMapFunction(oneHourSchema,
             Arrays.asList("cc_num","num_trans_per_1h","avg_amt_per_1h","stdev_amt_per_1h")));
     //send to online fg topic
     String oneHourFgTopic = "119_15_card_transactions_1h_agg_1_onlinefs";
     List<String> oneHourFgPk = Arrays.asList("cc_num");
-    oneHourRecord.addSink(new FlinkKafkaProducer<GenericRecord>(oneHourFgTopic,
-        new AvroKafkaSink(oneHourSchema, String.join(",", oneHourFgPk), oneHourFgTopic), utils.getKafkaProperties(brokers),
+    oneHourRecord.addSink(new FlinkKafkaProducer<byte[]>(oneHourFgTopic,
+        new AvroKafkaSink(String.join(",", oneHourFgPk), oneHourFgTopic), utils.getKafkaProperties(brokers),
         FlinkKafkaProducer.Semantic.AT_LEAST_ONCE));
 
     // compute 12 hour aggregations
@@ -84,15 +85,16 @@ public class FeatureEngineering {
             .window(TumblingEventTimeWindows.of(Time.minutes(60 * 12)))
             .apply(new TransactionsFeatureAggregator());
     // Get generic record for 12 hour aggregation fg
-    String twelveHourSchema = "{\"type\":\"record\",\"name\":\"card_transactions_12h_agg_1\",\"namespace\":\"transaction_featurestore.db\",\"fields\":[{\"name\":\"cc_num\",\"type\":[\"null\",\"long\"]},{\"name\":\"num_trans_per_12h\",\"type\":[\"null\",\"long\"]},{\"name\":\"avg_amt_per_12h\",\"type\":[\"null\",\"double\"]},{\"name\":\"stdev_amt_per_12h\",\"type\":[\"null\",\"double\"]}]}";
-    DataStream<GenericRecord> twelveHRecord =
-        twelveHourFeatures.map(new CreateGenericRecord(twelveHourSchema,
+    String twelveHourSchemaStr = "{\"type\":\"record\",\"name\":\"card_transactions_12h_agg_1\",\"namespace\":\"transaction_featurestore.db\",\"fields\":[{\"name\":\"cc_num\",\"type\":[\"null\",\"long\"]},{\"name\":\"num_trans_per_12h\",\"type\":[\"null\",\"long\"]},{\"name\":\"avg_amt_per_12h\",\"type\":[\"null\",\"double\"]},{\"name\":\"stdev_amt_per_12h\",\"type\":[\"null\",\"double\"]}]}";
+    final Schema twelveHourSchema = new Schema.Parser().parse(twelveHourSchemaStr);
+    DataStream<byte[]> twelveHRecord =
+        twelveHourFeatures.map(new GenericRecordMapFunction(twelveHourSchema,
             Arrays.asList("cc_num","num_trans_per_12h","avg_amt_per_12h","stdev_amt_per_12h")));
     //send to online fg topic
     String twelveHFgTopic = "119_16_card_transactions_12h_agg_1_onlinefs";
     List<String> twelveHFgPk = Arrays.asList("cc_num");;
-    twelveHRecord.addSink(new FlinkKafkaProducer<GenericRecord>(twelveHFgTopic,
-        new AvroKafkaSink(twelveHourSchema, String.join(",", twelveHFgPk), twelveHFgTopic), utils.getKafkaProperties(brokers),
+    twelveHRecord.addSink(new FlinkKafkaProducer<byte[]>(twelveHFgTopic,
+        new AvroKafkaSink(String.join(",", twelveHFgPk), twelveHFgTopic), utils.getKafkaProperties(brokers),
         FlinkKafkaProducer.Semantic.AT_LEAST_ONCE));
 
     env.execute();
