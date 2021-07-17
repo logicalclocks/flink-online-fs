@@ -9,6 +9,7 @@ import com.logicalclocks.flink.hsfs.synk.AvroKafkaSink;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericRecord;
+import org.apache.avro.reflect.ReflectData;
 import org.apache.commons.io.FileUtils;
 import org.apache.flink.api.common.functions.MapFunction;
 import org.apache.flink.api.java.io.jdbc.JDBCOptions;
@@ -28,6 +29,7 @@ import org.apache.flink.table.types.DataType;
 import java.io.File;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.util.Arrays;
 import java.util.Properties;
 
 import static org.apache.flink.table.api.DataTypes.DOUBLE;
@@ -91,30 +93,25 @@ public class Utils {
     return FileUtils.readFileToString(new File("material_passwd"));
   }
 
+  public GenericRecord createFromObject(Object object) {
+    final Schema schema = ReflectData.get().getSchema(object.getClass());
+    final GenericData.Record record = new GenericData.Record(schema);
+    Arrays.stream(object.getClass().getDeclaredFields()).forEach(field -> {
+      try {
+        record.put(field.getName(), field.get(object));
+      } catch (IllegalAccessException e) {
+        e.printStackTrace();
+      }
+    });
+    return record;
+  }
+
+  /*
   public GenericRecord parseAvroSchema (String userSchema) {
     Schema.Parser parser = new Schema.Parser();
     Schema schema = parser.parse(userSchema);
     GenericRecord avroRecord = new GenericData.Record(schema);
     return avroRecord;
-  }
-
-  public class TransactioonsAvroSchema implements MapFunction<SourceTransaction, org.apache.avro.generic.GenericRecord> {
-    private String userSchema;
-
-    public TransactioonsAvroSchema(String userSchema) {
-      this.userSchema = userSchema;
-    }
-
-    GenericRecord avroRecord = parseAvroSchema(this.userSchema);
-
-    @Override
-    public org.apache.avro.generic.GenericRecord map(SourceTransaction sourceTransaction) throws Exception {
-      avroRecord.put("tid", sourceTransaction.getTid());
-      avroRecord.put("datetime", sourceTransaction.getDatetime());
-      avroRecord.put("cc_num", sourceTransaction.getCcNumber());
-      avroRecord.put("amount", sourceTransaction.getAmount());
-      return avroRecord;
-    }
   }
 
   public DataStream<GenericRecord> getKafkaAvroSynk (String brokers, String topic,
@@ -123,6 +120,7 @@ public class Utils {
         new AvroKafkaSink("tid"), getKafkaProperties(brokers), FlinkKafkaProducer.Semantic.EXACTLY_ONCE));
     return synkDataStream;
   }
+   */
 
   /**
    * This method takes in input the Stream produced by the method above and write the output
@@ -222,5 +220,10 @@ public class Utils {
     writeOnlineFg(env, jdbcOptionsBuilder, "card_transactions_10m_agg_1", tenm);
     writeOnlineFg(env, jdbcOptionsBuilder, "card_transactions_1h_agg_1", oneh);
     writeOnlineFg(env, jdbcOptionsBuilder, "card_transactions_12h_agg_1", twelveh);
+  }
+
+  public Schema generateSchema(String userSchema) {
+    Schema.Parser parser = new Schema.Parser();
+    return parser.parse(userSchema);
   }
 }
