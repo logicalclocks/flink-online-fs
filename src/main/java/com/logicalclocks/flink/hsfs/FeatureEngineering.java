@@ -12,6 +12,7 @@ import org.apache.flink.api.java.tuple.Tuple4;
 import org.apache.flink.streaming.api.TimeCharacteristic;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
+import org.apache.flink.streaming.api.windowing.assigners.TumblingEventTimeWindows;
 import org.apache.flink.streaming.api.windowing.assigners.TumblingProcessingTimeWindows;
 import org.apache.flink.streaming.api.windowing.time.Time;
 
@@ -42,7 +43,7 @@ public class FeatureEngineering {
     // compute 10 min aggregations
     DataStream<Tuple4<Long, Long, Double, Double>> tenMinFeatures =
         sourceStream.keyBy(SourceTransaction::getCcNumber)
-            .window(TumblingProcessingTimeWindows.of(Time.minutes(10)))
+            .window(TumblingEventTimeWindows.of(Time.minutes(10)))
             .apply(new TransactionsFeatureAggregator());
 
     // Get generic record for 1 hour aggregation fg
@@ -63,7 +64,7 @@ public class FeatureEngineering {
     // compute 1 hour aggregations
     DataStream<Tuple4<Long, Long, Double, Double>> oneHourFeatures =
         sourceStream.keyBy(SourceTransaction::getCcNumber)
-            .window(TumblingProcessingTimeWindows.of(Time.minutes(60)))
+            .window(TumblingEventTimeWindows.of(Time.minutes(60)))
             .apply(new TransactionsFeatureAggregator());
     // Get generic record for 1 hour aggregation fg
     String oneHourSchema = "{\"type\":\"record\",\"name\":\"card_transactions_1h_agg_1\",\"namespace\":\"transaction_featurestore.db\",\"fields\":[{\"name\":\"cc_num\",\"type\":[\"null\",\"long\"]},{\"name\":\"num_trans_per_1h\",\"type\":[\"null\",\"long\"]},{\"name\":\"avg_amt_per_1h\",\"type\":[\"null\",\"double\"]},{\"name\":\"stdev_amt_per_1h\",\"type\":[\"null\",\"double\"]}]}";
@@ -80,7 +81,7 @@ public class FeatureEngineering {
     // compute 12 hour aggregations
     DataStream<Tuple4<Long, Long, Double, Double>> twelveHourFeatures =
         sourceStream.keyBy(SourceTransaction::getCcNumber)
-            .window(TumblingProcessingTimeWindows.of(Time.minutes(60 * 12)))
+            .window(TumblingEventTimeWindows.of(Time.minutes(60 * 12)))
             .apply(new TransactionsFeatureAggregator());
     // Get generic record for 12 hour aggregation fg
     String twelveHourSchema = "{\"type\":\"record\",\"name\":\"card_transactions_12h_agg_1\",\"namespace\":\"transaction_featurestore.db\",\"fields\":[{\"name\":\"cc_num\",\"type\":[\"null\",\"long\"]},{\"name\":\"num_trans_per_12h\",\"type\":[\"null\",\"long\"]},{\"name\":\"avg_amt_per_12h\",\"type\":[\"null\",\"double\"]},{\"name\":\"stdev_amt_per_12h\",\"type\":[\"null\",\"double\"]}]}";
