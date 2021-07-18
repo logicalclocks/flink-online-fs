@@ -39,8 +39,10 @@ public class AggregateRichWindowFunction extends RichWindowFunction<SourceTransa
     this.fields = fields;
   }
 
+  // change this function according to your needs. In the next release users will be able to provide config file
   @Override
-  public void apply(Long key, TimeWindow timeWindow, Iterable<SourceTransaction> iterable, Collector<byte[]> collector) throws Exception {
+  public void apply(Long key, TimeWindow timeWindow, Iterable<SourceTransaction> iterable, Collector<byte[]> collector)
+      throws Exception {
 
     long cnt = 0;
     for (SourceTransaction r : iterable) {
