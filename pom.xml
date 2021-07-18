@@ -11,12 +11,17 @@
     <properties>
         <flink.version>1.9.2</flink.version>
         <kafka.version>2.2.0</kafka.version>
-        <jodatime.version>2.9.9</jodatime.version>
+        <jodatime.version>2.10.2</jodatime.version>
         <scala.base>2.11</scala.base>
         <lombok.version>1.18.6</lombok.version>
-        <jackson.version>2.6.7.1</jackson.version>
-        <hsfs.version>2.3.0-SNAPSHOT</hsfs.version>
-        <avro.version>1.10.0</avro.version>
+        <fasterxml.jackson.databind.version>2.10.0</fasterxml.jackson.databind.version>
+        <avro.version>1.10.1</avro.version>
+
+        <httpclient.version>4.5.6</httpclient.version>
+        <httpcore.version>4.4.10</httpcore.version>
+        <handy.version>2.1.8</handy.version>
+        <guava.version>14.0.1</guava.version>
+        <awssdk.version>2.10.40</awssdk.version>
     </properties>
 
     <dependencies>
@@ -160,7 +165,8 @@
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
-            <version>${jackson.version}</version>
+            <version>${fasterxml.jackson.databind.version}</version>
+            <!-- <scope>provided</scope> -->
         </dependency>
 
         <dependency>
@@ -187,13 +193,71 @@
             <version>2.2</version>
         </dependency>
 
-        <!-- https://mvnrepository.com/artifact/mysql/mysql-connector-java -->
         <dependency>
-            <groupId>mysql</groupId>
-            <artifactId>mysql-connector-java</artifactId>
-            <version>8.0.21</version>
+            <groupId>org.apache.httpcomponents</groupId>
+            <artifactId>httpclient</artifactId>
+            <version>${httpclient.version}</version>
+            <scope>provided</scope>
         </dependency>
 
+        <dependency>
+            <groupId>org.apache.httpcomponents</groupId>
+            <artifactId>httpcore</artifactId>
+            <version>${httpcore.version}</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>com.damnhandy</groupId>
+            <artifactId>handy-uri-templates</artifactId>
+            <version>${handy.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.google.guava</groupId>
+            <artifactId>guava</artifactId>
+            <version>${guava.version}</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>ssm</artifactId>
+            <version>${awssdk.version}</version>
+            <scope>provided</scope>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.apache.httpcomponents</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>sts</artifactId>
+            <version>${awssdk.version}</version>
+            <scope>provided</scope>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.apache.httpcomponents</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>secretsmanager</artifactId>
+            <version>${awssdk.version}</version>
+            <scope>provided</scope>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.apache.httpcomponents</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
     </dependencies>
 
     <build>
@@ -204,7 +268,7 @@
                 <configuration>
                     <archive>
                         <manifest>
-                            <mainClass>com.logicalclocks.flink.hsfs.FeatureEngineering</mainClass>
+                            <mainClass>com.logicalclocks.flink.hsfs.Main</mainClass>
                         </manifest>
                     </archive>
                 </configuration>

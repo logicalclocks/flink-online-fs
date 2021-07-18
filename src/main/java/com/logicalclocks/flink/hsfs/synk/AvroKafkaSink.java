@@ -1,21 +1,29 @@
 package com.logicalclocks.flink.hsfs.synk;
 
-import org.apache.avro.generic.GenericRecord;
-import org.apache.flink.streaming.connectors.kafka.KafkaSerializationSchema;
-import org.apache.kafka.clients.producer.ProducerRecord;
+import lombok.SneakyThrows;
 
 import javax.annotation.Nullable;
 
-public class AvroKafkaSink implements KafkaSerializationSchema<GenericRecord> {
-  private String keyField;
+import org.apache.flink.streaming.connectors.kafka.KafkaSerializationSchema;
+import org.apache.kafka.clients.producer.ProducerRecord;
 
-  public AvroKafkaSink(String keyField) {
-    this.keyField = keyField;
+public class AvroKafkaSink implements KafkaSerializationSchema<byte[]> {
+  private String keyField;
+  private String topic;
+
+  public AvroKafkaSink(String topic) {
+    this.topic = topic;
   }
+
+  public AvroKafkaSink(String keyField, String topic) {
+    this.keyField = keyField;
+    this.topic = topic;
+  }
+
+  @SneakyThrows
   @Override
-  public ProducerRecord<byte[], byte[]> serialize(GenericRecord element, @Nullable Long timestamp) {
-    byte[] value = element.toString().getBytes();
-    String key = String.valueOf(element.get(this.keyField));
-    return new ProducerRecord<byte[], byte[]>(key, value);
+  public ProducerRecord<byte[], byte[]> serialize(byte[] value, @Nullable Long timestamp) {
+    byte[] key = this.keyField.getBytes();
+    return new ProducerRecord(this.topic, key, value);
   }
 }
