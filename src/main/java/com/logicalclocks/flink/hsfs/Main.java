@@ -3,7 +3,6 @@ package com.logicalclocks.flink.hsfs;
 import com.logicalclocks.flink.hsfs.functions.AggregateRichWindowFunction;
 import com.logicalclocks.flink.hsfs.synk.AvroKafkaSink;
 import com.logicalclocks.flink.hsfs.utils.Utils;
-import com.logicalclocks.flink.hsfs.schemas.SourceTransaction;
 
 import com.logicalclocks.hsfs.Feature;
 import com.logicalclocks.hsfs.FeatureGroup;
@@ -17,7 +16,9 @@ import org.apache.flink.streaming.api.windowing.time.Time;
 
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaProducer;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 import java.util.stream.Collectors;
 
@@ -45,18 +46,24 @@ public class Main {
     FeatureGroup twelveHFg = fs.getFeatureGroup("card_transactions_10m_agg", 1);
 
     // get source stream
-    DataStream<SourceTransaction> sourceStream = utils.getSourceKafkaStream(env, BROKERS, SOURCE_TOPIC);
+    DataStream<Map<String, Object>> sourceStream = utils.getSourceKafkaStream(env, BROKERS, SOURCE_TOPIC,
+        "datetime", "yyyy-MM-dd hh:mm:ss");
 
     // compute 10 min aggregations
-    DataStream<byte[]> tenMinRecord =
-        sourceStream.keyBy(SourceTransaction::getCcNumber)
-            .window(TumblingEventTimeWindows.of(Time.minutes(10)))
-            .apply(new AggregateRichWindowFunction(tenMinFg.getDeserializedAvroSchema(),
-                tenMinFg.getFeatures().stream().map(Feature::getName).collect(Collectors.toList())));
-
-    //send to online fg topic
+    Map<String, Map<String, String>> tenMinFieldsToAggregation = new HashMap<String, Map<String, String>>() {{
+      put("amount", new HashMap<String, String>() {{put("avg_amt_per_10m", "average");}});
+      put("amount", new HashMap<String, String>() {{put("stdev_amt_per_10m", "amount");}});
+      put("cc_num", new HashMap<String, String>() {{put("num_trans_per_10m", "count");}});
+    }};
     List<String> tenMinFgPk = tenMinFg.getFeatures().stream().filter(Feature::getPrimary)
         .map(Feature::getName).collect(Collectors.toList());
+    DataStream<byte[]> tenMinRecord =
+        sourceStream.keyBy(r -> r.get(tenMinFgPk.get(0)))
+            .window(TumblingEventTimeWindows.of(Time.minutes(10)))
+            .apply(new AggregateRichWindowFunction(tenMinFgPk.get(0), tenMinFg.getDeserializedAvroSchema(),
+                tenMinFieldsToAggregation));
+
+    //send to online fg topic
     Properties tenMinKafkaProps = utils.getKafkaProperties(tenMinFg);
     tenMinRecord.addSink(new FlinkKafkaProducer<byte[]>(tenMinFg.getOnlineTopicName(),
         new AvroKafkaSink(String.join(",", tenMinFgPk), tenMinFg.getOnlineTopicName()),
@@ -64,30 +71,41 @@ public class Main {
         FlinkKafkaProducer.Semantic.AT_LEAST_ONCE));
 
     // compute 1 hour aggregations
-    DataStream<byte[]> oneHourRecord =
-        sourceStream.keyBy(SourceTransaction::getCcNumber)
-            .window(TumblingEventTimeWindows.of(Time.minutes(60)))
-            .apply(new AggregateRichWindowFunction(oneHourFg.getDeserializedAvroSchema(),
-                oneHourFg.getFeatures().stream().map(Feature::getName).collect(Collectors.toList())));
-
-    //send to online fg topic
+    Map<String, Map<String, String>> oneHourFgFieldsToAggregation = new HashMap<String, Map<String, String>>() {{
+      put("amount", new HashMap<String, String>() {{put("avg_amt_per_1h", "average");}});
+      put("amount", new HashMap<String, String>() {{put("stdev_amt_per_1h", "amount");}});
+      put("cc_num", new HashMap<String, String>() {{put("num_trans_per_1n", "count");}});
+    }};
     List<String> oneHourFgPk = oneHourFg.getFeatures().stream().filter(Feature::getPrimary)
         .map(Feature::getName).collect(Collectors.toList());
+    DataStream<byte[]> oneHourRecord =
+        sourceStream.keyBy(r -> r.get(oneHourFgPk.get(0)))
+            .window(TumblingEventTimeWindows.of(Time.minutes(60)))
+            .apply(new AggregateRichWindowFunction(oneHourFgPk.get(0), oneHourFg.getDeserializedAvroSchema(),
+                oneHourFgFieldsToAggregation));
+
+    //send to online fg topic
     Properties oneHourKafkaProps = utils.getKafkaProperties(oneHourFg);
     oneHourRecord.addSink(new FlinkKafkaProducer<byte[]>(oneHourFg.getOnlineTopicName(),
         new AvroKafkaSink(String.join(",", oneHourFgPk), oneHourFg.getOnlineTopicName()),
         oneHourKafkaProps, FlinkKafkaProducer.Semantic.AT_LEAST_ONCE));
 
     // compute 12 hour aggregations
-    DataStream<byte[]> twelveHRecord =
-        sourceStream.keyBy(SourceTransaction::getCcNumber)
-            .window(TumblingEventTimeWindows.of(Time.minutes(60 * 12)))
-            .apply(new AggregateRichWindowFunction(twelveHFg.getDeserializedAvroSchema(),
-                twelveHFg.getFeatures().stream().map(Feature::getName).collect(Collectors.toList())));
+    Map<String, Map<String, String>> twelveHFieldsToAggregation = new HashMap<String, Map<String, String>>() {{
+      put("amount", new HashMap<String, String>() {{put("avg_amt_per_12h", "average");}});
+      put("amount", new HashMap<String, String>() {{put("stdev_amt_per_12h", "amount");}});
+      put("cc_num", new HashMap<String, String>() {{put("num_trans_per_12n", "count");}});
+    }};
 
-    //send to online fg topic
     List<String> twelveHFgPk = twelveHFg.getFeatures().stream().filter(Feature::getPrimary)
         .map(Feature::getName).collect(Collectors.toList());
+    DataStream<byte[]> twelveHRecord =
+        sourceStream.keyBy(r -> r.get(twelveHFgPk.get(0)))
+            .window(TumblingEventTimeWindows.of(Time.minutes(60 * 12)))
+            .apply(new AggregateRichWindowFunction(twelveHFgPk.get(0), twelveHFg.getDeserializedAvroSchema(),
+                twelveHFieldsToAggregation));
+
+    //send to online fg topic
     Properties twelveHKafkaProps = utils.getKafkaProperties(twelveHFg);
     twelveHRecord.addSink(new FlinkKafkaProducer<byte[]>(twelveHFg.getOnlineTopicName(),
         new AvroKafkaSink(String.join(",", twelveHFgPk), twelveHFg.getOnlineTopicName()),
