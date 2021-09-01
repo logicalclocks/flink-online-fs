@@ -5,16 +5,15 @@
   "event_time": "datetime",
   "event_time_type": "String",
   "event_time_format": "yyyy-MM-dd HH:mm:ss",
-  "event_type": "",
-  "window_size": "10",
+  "window_size": 10,
   "window_time_unit": "minutes",
-  "watermark": "1",
+  "watermark": 1,
   "watermark_time_unit": "hours",
-  "window": "tumbling",
-  "slide_interval": "",
-  "slide_interval_time_unit": "",
-  "gap_interval": "",
-  "gap_interval_time_unit": "",
+  "window_type": "tumbling",
+  "slide_size": 0,
+  "slide_time_unit": "minutes",
+  "gap_size": 0,
+  "gap_time_unit": "minutes",
   "aggregations" : {
     "avg_amt_per_10m" : {
       "amount": "average"
@@ -28,5 +27,6 @@
   },
   "window_start": "false",
   "window_end": "false",
+  "source_filters": {},
   "online_source": "credit_card_transactions"
 }

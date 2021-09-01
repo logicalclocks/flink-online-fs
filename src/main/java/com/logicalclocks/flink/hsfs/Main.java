@@ -47,7 +47,7 @@ public class Main {
 
     // get source stream
     DataStream<Map<String, Object>> sourceStream = utils.getSourceKafkaStream(env, SOURCE_TOPIC,
-        "datetime", "yyyy-MM-dd hh:mm:ss", "string");
+        "datetime", "yyyy-MM-dd hh:mm:ss", "string", 1, "hours");
 
     // compute 10 min aggregations
     Map<String, Map<String, String>> tenMinFieldsToAggregation = new HashMap<String, Map<String, String>>() {{
