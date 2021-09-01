@@ -46,14 +46,14 @@ public class Main {
     FeatureGroup twelveHFg = fs.getFeatureGroup("card_transactions_10m_agg", 1);
 
     // get source stream
-    DataStream<Map<String, Object>> sourceStream = utils.getSourceKafkaStream(env, BROKERS, SOURCE_TOPIC,
-        "datetime", "yyyy-MM-dd hh:mm:ss");
+    DataStream<Map<String, Object>> sourceStream = utils.getSourceKafkaStream(env, SOURCE_TOPIC,
+        "datetime", "yyyy-MM-dd hh:mm:ss", "string");
 
     // compute 10 min aggregations
     Map<String, Map<String, String>> tenMinFieldsToAggregation = new HashMap<String, Map<String, String>>() {{
-      put("amount", new HashMap<String, String>() {{put("avg_amt_per_10m", "average");}});
-      put("amount", new HashMap<String, String>() {{put("stdev_amt_per_10m", "amount");}});
-      put("cc_num", new HashMap<String, String>() {{put("num_trans_per_10m", "count");}});
+      put("avg_amt_per_10m", new HashMap<String, String>() {{put("average", "amount");}});
+      put("stdev_amt_per_10m", new HashMap<String, String>() {{put("stdev", "amount");}});
+      put("num_trans_per_10m", new HashMap<String, String>() {{put("count", "cc_num");}});
     }};
     List<String> tenMinFgPk = tenMinFg.getFeatures().stream().filter(Feature::getPrimary)
         .map(Feature::getName).collect(Collectors.toList());
@@ -72,10 +72,11 @@ public class Main {
 
     // compute 1 hour aggregations
     Map<String, Map<String, String>> oneHourFgFieldsToAggregation = new HashMap<String, Map<String, String>>() {{
-      put("amount", new HashMap<String, String>() {{put("avg_amt_per_1h", "average");}});
-      put("amount", new HashMap<String, String>() {{put("stdev_amt_per_1h", "amount");}});
-      put("cc_num", new HashMap<String, String>() {{put("num_trans_per_1n", "count");}});
+      put("avg_amt_per_1h", new HashMap<String, String>() {{put("average", "amount");}});
+      put("stdev_amt_per_1h", new HashMap<String, String>() {{put("stdev", "amount");}});
+      put("num_trans_per_1n", new HashMap<String, String>() {{put("count", "cc_num");}});
     }};
+
     List<String> oneHourFgPk = oneHourFg.getFeatures().stream().filter(Feature::getPrimary)
         .map(Feature::getName).collect(Collectors.toList());
     DataStream<byte[]> oneHourRecord =
@@ -92,9 +93,9 @@ public class Main {
 
     // compute 12 hour aggregations
     Map<String, Map<String, String>> twelveHFieldsToAggregation = new HashMap<String, Map<String, String>>() {{
-      put("amount", new HashMap<String, String>() {{put("avg_amt_per_12h", "average");}});
-      put("amount", new HashMap<String, String>() {{put("stdev_amt_per_12h", "amount");}});
-      put("cc_num", new HashMap<String, String>() {{put("num_trans_per_12n", "count");}});
+      put("avg_amt_per_12h", new HashMap<String, String>() {{put("average", "amount");}});
+      put("stdev_amt_per_12h", new HashMap<String, String>() {{put("stdev", "amount");}});
+      put("num_trans_per_12n", new HashMap<String, String>() {{put("count", "cc_num");}});
     }};
 
     List<String> twelveHFgPk = twelveHFg.getFeatures().stream().filter(Feature::getPrimary)

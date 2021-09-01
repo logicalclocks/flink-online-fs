@@ -29,6 +29,7 @@ public class AggregateRichWindowFunction extends RichWindowFunction<Map<String, 
   // descriptive statistics
   private DescriptiveStatistics descriptiveStatistics;
 
+  // TODO (davit): why not schema directly?
   // Avro schema in JSON format.
   private final String schemaString;
 
@@ -39,17 +40,18 @@ public class AggregateRichWindowFunction extends RichWindowFunction<Map<String, 
   public AggregateRichWindowFunction(String primaryKeyName, Schema schema, Map<String, Map<String, String>>
       fieldsToAggregation) {
     this.primaryKeyName = primaryKeyName;
+    // TODO (davit): why not schema directly?
     this.schemaString = schema.toString();
     this.fieldsToAggregation = fieldsToAggregation;
   }
 
   @Override
-  public void apply(Object key, TimeWindow timeWindow, Iterable<Map<String, Object>> iterable, Collector<byte[]> collector)
-      throws Exception {
-    for (String field : fieldsToAggregation.keySet()) {
-      Map<String, String> aggregationToFeature = fieldsToAggregation.get(field);
-      for (String outputName : aggregationToFeature.keySet()) {
-        Object aggValue = windowAggregationStats(field, aggregationToFeature.get(outputName), iterable);
+  public void apply(Object key, TimeWindow timeWindow, Iterable<Map<String, Object>> iterable,
+                    Collector<byte[]> collector) throws Exception {
+    for (String outputName : fieldsToAggregation.keySet()) {
+      Map<String, String> aggregationToFeature = fieldsToAggregation.get(outputName);
+      for (String field : aggregationToFeature.keySet()) {
+        Object aggValue = windowAggregationStats(field, aggregationToFeature.get(field), iterable);
         record.put(outputName, aggValue);
       }
     }
@@ -85,7 +87,9 @@ public class AggregateRichWindowFunction extends RichWindowFunction<Map<String, 
     long count = 0;
     for (Map<String, Object> data: iterable) {
       count++;
-      descriptiveStatistics.addValue((double) data.get(field));
+      if (!method.equals("count")){
+        descriptiveStatistics.addValue((double) data.get(field));
+      }
     }
 
     switch(method) {
@@ -104,7 +108,7 @@ public class AggregateRichWindowFunction extends RichWindowFunction<Map<String, 
       case "sumsq":
         // sum of the squares
         return descriptiveStatistics.getSumsq();
-      case "standard deviation":
+      case "stdev":
         // standard deviation
         return descriptiveStatistics.getStandardDeviation();
       case "variance":
@@ -119,6 +123,9 @@ public class AggregateRichWindowFunction extends RichWindowFunction<Map<String, 
       case "kurtosis":
         // Kurtosis of the available values
         return descriptiveStatistics.getKurtosis();
+      case "count":
+        // count
+        return count;
       default:
         return null;
     }

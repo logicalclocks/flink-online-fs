@@ -268,7 +268,7 @@
                 <configuration>
                     <archive>
                         <manifest>
-                            <mainClass>com.logicalclocks.flink.hsfs.Main</mainClass>
+                            <mainClass>com.logicalclocks.flink.hsfs.Aggregations</mainClass>
                         </manifest>
                     </archive>
                 </configuration>

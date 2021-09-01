@@ -1,0 +1,32 @@
+{
+  "feature_group_name":"card_transactions_10m_agg",
+  "feature_group_version": 1,
+  "key": "cc_num",
+  "event_time": "datetime",
+  "event_time_type": "String",
+  "event_time_format": "yyyy-MM-dd HH:mm:ss",
+  "event_type": "",
+  "window_size": "10",
+  "window_time_unit": "minutes",
+  "watermark": "1",
+  "watermark_time_unit": "hours",
+  "window": "tumbling",
+  "slide_interval": "",
+  "slide_interval_time_unit": "",
+  "gap_interval": "",
+  "gap_interval_time_unit": "",
+  "aggregations" : {
+    "avg_amt_per_10m" : {
+      "amount": "average"
+    },
+    "stdev_amt_per_10m": {
+      "amount": "stdev"
+    },
+    "num_trans_per_10m" : {
+      "cc_num" : "count"
+    }
+  },
+  "window_start": "false",
+  "window_end": "false",
+  "online_source": "credit_card_transactions"
+}

@@ -29,12 +29,10 @@ public class Utils {
 
   private KafkaApi kafkaApi = new KafkaApi();
 
-  public Properties getKafkaProperties(FeatureGroup featureGroup) throws Exception {
+  public Properties getKafkaProperties() throws Exception {
     Properties dataKafkaProps = new Properties();
     String materialPasswd = readMaterialPassword();
-    dataKafkaProps.setProperty("bootstrap.servers",
-        kafkaApi.getBrokerEndpoints(featureGroup.getFeatureStore()).stream().map(broker -> broker.replaceAll(
-        "INTERNAL://", "")).collect(Collectors.joining(",")));
+    dataKafkaProps.setProperty("bootstrap.servers", "broker.kafka.service.consul:9091");
     // These settings are static and they don't need to be changed
     dataKafkaProps.setProperty("security.protocol", "SSL");
     dataKafkaProps.setProperty("ssl.truststore.location", "t_certificate");
@@ -47,10 +45,12 @@ public class Utils {
     return dataKafkaProps;
   }
 
-  public Properties getKafkaProperties(String broker) throws Exception {
+  public Properties getKafkaProperties(FeatureGroup featureGroup) throws Exception {
     Properties dataKafkaProps = new Properties();
     String materialPasswd = readMaterialPassword();
-    dataKafkaProps.setProperty("bootstrap.servers", broker);
+    dataKafkaProps.setProperty("bootstrap.servers",
+        kafkaApi.getBrokerEndpoints(featureGroup.getFeatureStore()).stream().map(broker -> broker.replaceAll(
+            "INTERNAL://", "")).collect(Collectors.joining(",")));
     // These settings are static and they don't need to be changed
     dataKafkaProps.setProperty("security.protocol", "SSL");
     dataKafkaProps.setProperty("ssl.truststore.location", "t_certificate");
@@ -59,6 +59,15 @@ public class Utils {
     dataKafkaProps.setProperty("ssl.keystore.password", materialPasswd);
     dataKafkaProps.setProperty("ssl.key.password", materialPasswd);
     dataKafkaProps.setProperty("ssl.endpoint.identification.algorithm", "");
+
+    return dataKafkaProps;
+  }
+
+  public Properties getKafkaProperties(Map<String, String> propsMap) throws Exception {
+    Properties dataKafkaProps = new Properties();
+    for (String key: propsMap.keySet()) {
+      dataKafkaProps.setProperty(key, propsMap.get(key));
+    }
 
     return dataKafkaProps;
   }
@@ -70,19 +79,21 @@ public class Utils {
    * The stream at this stage contains just string.
    *
    * @param env The Stream execution environment to which add the source
-   * @param brokers the list of brokers to use as bootstrap servers for Kafka
    * @param sourceTopic the Kafka topic to read the data from
    * @return the DataStream object
    * @throws Exception
    */
 
-  public DataStream<Map<String, Object>> getSourceKafkaStream(StreamExecutionEnvironment env, String brokers,
+  public DataStream<Map<String, Object>> getSourceKafkaStream(StreamExecutionEnvironment env,
                                                               String sourceTopic,
-                                                              String timestampField, String dateTimeFormat)
+                                                              String timestampField,
+                                                              String eventTimeFormat,
+                                                              String eventTimeType)
       throws Exception {
 
+    Properties kafkaProperties = getKafkaProperties();
     FlinkKafkaConsumerBase<Map<String, Object>> kafkaSource = new FlinkKafkaConsumer<>(
-        sourceTopic, new StringToMapDeserializationSchema(), getKafkaProperties(brokers)).setStartFromEarliest();
+        sourceTopic, new StringToMapDeserializationSchema(), kafkaProperties).setStartFromEarliest();
 
     kafkaSource.setStartFromEarliest();
     kafkaSource.assignTimestampsAndWatermarks(new AscendingTimestampExtractor<Map<String, Object>>() {
@@ -94,12 +105,71 @@ public class Utils {
         } else {
           throw new VerifyError("Provided field doesn't exist");
         }
-        SimpleDateFormat dateFormat = new SimpleDateFormat(dateTimeFormat);
         Long timeStamp = null;
-        try {
-          timeStamp = dateFormat.parse(datetimeField).getTime();
-        } catch (ParseException e) {
-          e.printStackTrace();
+        if (eventTimeType.toLowerCase().equals("string")) {
+          SimpleDateFormat dateFormat = new SimpleDateFormat(eventTimeFormat);
+          try {
+            timeStamp = dateFormat.parse(datetimeField).getTime();
+          } catch (ParseException e) {
+            e.printStackTrace();
+          }
+        } else if (eventTimeType.toLowerCase().equals("long")) {
+          timeStamp = Long.valueOf(timestampField);
+        } else {
+          throw new VerifyError("For timestampField filed only String and Long types are supported");
+        }
+        return timeStamp;
+      }
+    });
+    return env.addSource(kafkaSource);
+  }
+
+  /**
+   * Setup the Kafka source stream.
+   *
+   * The Kafka topic is populated by the same producer notebook.
+   * The stream at this stage contains just string.
+   *
+   * @param env The Stream execution environment to which add the source
+   * @param propsMap Kafka properties parsed from config file
+   * @param sourceTopic the Kafka topic to read the data from
+   * @return the DataStream object
+   * @throws Exception
+   */
+
+  public DataStream<Map<String, Object>> getSourceKafkaStream(StreamExecutionEnvironment env,
+                                                              Map<String, String> propsMap,
+                                                              String sourceTopic,
+                                                              String timestampField,
+                                                              String eventTimeFormat,
+                                                              String eventTimeType) throws Exception {
+
+    Properties kafkaProperties = getKafkaProperties(propsMap);
+    FlinkKafkaConsumerBase<Map<String, Object>> kafkaSource = new FlinkKafkaConsumer<>(
+        sourceTopic, new StringToMapDeserializationSchema(), kafkaProperties).setStartFromEarliest();
+
+    kafkaSource.setStartFromEarliest();
+    kafkaSource.assignTimestampsAndWatermarks(new AscendingTimestampExtractor<Map<String, Object>>() {
+      @Override
+      public long extractAscendingTimestamp(Map<String, Object> element) {
+        String datetimeField;
+        if (element.containsKey(timestampField)){
+          datetimeField = (String) element.get(timestampField);
+        } else {
+          throw new VerifyError("Provided field doesn't exist");
+        }
+        Long timeStamp = null;
+        if (eventTimeType.toLowerCase().equals("string")) {
+          SimpleDateFormat dateFormat = new SimpleDateFormat(eventTimeFormat);
+          try {
+            timeStamp = dateFormat.parse(datetimeField).getTime();
+          } catch (ParseException e) {
+            e.printStackTrace();
+          }
+        } else if (eventTimeType.toLowerCase().equals("long")) {
+          timeStamp = Long.valueOf(timestampField);
+        } else {
+          throw new VerifyError("For timestampField filed only String and Long types are supported");
         }
         return timeStamp;
       }
