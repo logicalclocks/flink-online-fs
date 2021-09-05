@@ -14,11 +14,15 @@
 
 package com.logicalclocks.cli;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import io.hops.cli.action.FileUploadAction;
-import io.hops.cli.action.JobCreateAction;
 import io.hops.cli.config.HopsworksAPIConfig;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import org.apache.http.HttpStatus;
+import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.CommandLineParser;
+import org.apache.commons.cli.BasicParser;
+import org.apache.commons.cli.Options;
 
 import java.io.File;
 import java.io.IOException;
@@ -30,90 +34,142 @@ import java.util.logging.Logger;
 
 public class HopsCreateJob {
 
-  public void actionPerformed() throws Exception {
+  public void actionPerformed(String jobType, String sparkJarFilePath) throws Exception {
+
     // jobs config
-    Map<Object, Object> jobsConfig;
-    InputStream inputStream = getClass().getClassLoader().getResourceAsStream("json/flink_job_config.json");
+    Map<Object, Object> flinkJobConfig;
+    InputStream finkJobConfigStream = getClass().getClassLoader().getResourceAsStream("json/flink_job_config.json");
     try {
-      jobsConfig =
-          new ObjectMapper().readValue(inputStream, HashMap.class);
-      inputStream.close();
+      flinkJobConfig =
+          new ObjectMapper().readValue(finkJobConfigStream, HashMap.class);
+      finkJobConfigStream.close();
     } catch (Exception e) {
       throw new Exception(e.toString());
     }
 
-    String hopsworksApiKey = (String) jobsConfig.get("hopsworksApiKey");
-    String hopsworksUrl = (String) jobsConfig.get("hopsworksUrl");
-    String projectName = (String) jobsConfig.get("projectName");
-    String jobName = (String) jobsConfig.get("jobName");
-    String destination = (String) jobsConfig.get("destination");
-    String userArgs = (String) jobsConfig.get("userArgs");
+    Map<Object, Object> sparkJobConfig;
+    InputStream sparkJobConfigStream = getClass().getClassLoader().getResourceAsStream("json/spark_job_config.json");
+    try {
+      sparkJobConfig =
+          new ObjectMapper().readValue(sparkJobConfigStream, HashMap.class);
+      sparkJobConfigStream.close();
+    } catch (Exception e) {
+      throw new Exception(e.toString());
+    }
 
-    String jobType = (String) jobsConfig.get("jobType");
-    Integer jobManagerMemory  = (Integer) jobsConfig.get("jobManagerMemory");;
-    Integer taskManagerMemory =  (Integer) jobsConfig.get("taskManagerMemory");;
-    Integer numTaskManager = (Integer) jobsConfig.get("numTaskManager");;
-    Integer numSlots = (Integer) jobsConfig.get("numSlots");;
-    Boolean isAdvanced = (Boolean) jobsConfig.get("isAdvanced");;
-    String advancedProperties = (String) jobsConfig.get("advancedProperties");
+    // aggregations config
+    Map<Object, Object> aggregationSpecs;
+    InputStream aggConfigStream = getClass().getClassLoader().getResourceAsStream("json/flink_aggregations_config.json");
+    try {
+      aggregationSpecs =
+          new ObjectMapper().readValue(aggConfigStream, HashMap.class);
+      aggConfigStream.close();
+    } catch (Exception e) {
+      throw new Exception(e.toString());
+    }
 
-    String mainClass = (String) jobsConfig.get("mainClass");
-    String localFilePath = "/Users/davitbz/IdeaProjects/flink-online-fs/flink/target/flink-1.0-SNAPSHOT.jar";
-    File file = new File(localFilePath);
-    String finalPath = destination + File.separator + file.getName();
+    String hopsworksApiKey = (String) flinkJobConfig.get("hopsworksApiKey");
+    String hopsworksUrl = (String) flinkJobConfig.get("hopsworksUrl");
+    String projectName = (String) flinkJobConfig.get("projectName");
+    String destination = (String) flinkJobConfig.get("destination");
+
+    Integer flinkJobManagerMemory  = (Integer) flinkJobConfig.get("jobManagerMemory");;
+    Integer flinkTaskManagerMemory =  (Integer) flinkJobConfig.get("taskManagerMemory");;
+    Integer flinkNumTaskManager = (Integer) flinkJobConfig.get("numTaskManager");;
+    Integer flinkNumSlots = (Integer) flinkJobConfig.get("numSlots");;
+    Boolean flinkIsAdvanced = (Boolean) flinkJobConfig.get("isAdvanced");;
+    String flinkAdvancedProperties = (String) flinkJobConfig.get("advancedProperties");
+
+    Integer sparkDriverMemInMbs = (Integer) sparkJobConfig.get("driverMemInMbs");
+    Integer sparkDriverVC = (Integer) sparkJobConfig.get("driverVC");
+    Integer sparkExecutorMemInMbs = (Integer) sparkJobConfig.get("executorMemInMbs");
+    Integer sparkExecutorVC = (Integer) sparkJobConfig.get("executorVC");
+    boolean sparkDynamic =(boolean) sparkJobConfig.get("dynamic");
+    Integer sparkNumExecutors = (Integer) sparkJobConfig.get("numExecutors");
+    Integer sparkInitExecutors = (Integer) sparkJobConfig.get("initExecutors");
+    Integer sparkMaxExecutors = (Integer) sparkJobConfig.get("maxExecutors");
+    Integer sparkMinExecutors = (Integer) sparkJobConfig.get("minExecutors");
+    boolean sparkAdvanceConfig = (boolean) sparkJobConfig.get("advanceConfig");
+    String sparkArchives = (String) sparkJobConfig.get("archives");
+    String sparkAttachfiles = (String) sparkJobConfig.get("files");
+    String sparkPythonDependency = (String) sparkJobConfig.get("pythonDependency");
+    String sparkAttachjars = (String) sparkJobConfig.get("jars");
+    String sparkProperties = (String) sparkJobConfig.get("properties");
+    String sparkMainClass = (String) sparkJobConfig.get("sparkMainClass");
+    Integer minSyncIntervalSeconds = (Integer) sparkJobConfig.get("minSyncIntervalSeconds");
+    String sparkJobArgs;
 
     String hopsProject = null;
+    String jobName = null;
+    if (sparkMainClass.equals("com.logicalclocks.hudi.DeltaStreamerJob")) {
+      jobName = "deltaStreamerJob";
+      sparkJobArgs =  String.format("-featureGroupName %s -featureGroupVersion %d -minSyncIntervalSeconds %d",
+          (String) aggregationSpecs.get("feature_group_name"),
+          (Integer) aggregationSpecs.get("feature_group_version"),
+          minSyncIntervalSeconds);
+    } else {
+      jobName = "microbatching";
+      sparkJobArgs =  String.format("-featureGroupName %s -featureGroupVersion",
+          (String) aggregationSpecs.get("feature_group_name"),
+          (Integer) aggregationSpecs.get("feature_group_version"));
+    }
+
     try {
       HopsworksAPIConfig hopsworksAPIConfig = new HopsworksAPIConfig(hopsworksApiKey, hopsworksUrl, projectName);
       //upload program
-      FileUploadAction uploadAction = new FileUploadAction(hopsworksAPIConfig, destination, localFilePath);
+      FileUploadAction uploadAction = new FileUploadAction(hopsworksAPIConfig, destination, sparkJarFilePath);
       hopsProject = uploadAction.getProjectId(); //check if valid project,throws null pointer
       // upload program if not flink
       if (!jobType.equals("FLINK")) //HopsPluginUtils.FLINK
         uploadAction.execute();
       //set program configs
       JobCreateAction.Args args = new JobCreateAction.Args();
-      args.setMainClass(mainClass); //set user provides,overridden by inspect job config
-      args.setAppPath(finalPath); //full app path
       args.setJobType(jobType);  // spark/flink
-      args.setCommandArgs(userArgs.trim());
       switch (jobType) {
-        case "SPARK": //HopsPluginUtils.SPARK
-          args.setDriverMemInMbs(2048); //Integer.parseInt(util.getDriverMemory(proj))
-          args.setDriverVC(1); //Integer.parseInt(util.getDriverVC(proj))
-          args.setExecutorMemInMbs(4096); //Integer.parseInt(util.getExecutorMemory(proj))
-          args.setExecutorVC(1); //"Integer.parseInt(util.getExecutorVC(proj))";
-          args.setDynamic(true); //"HopsPluginUtils.isSparkDynamic(proj)"
-          if (false) //!HopsPluginUtils.isSparkDynamic(proj)
-            args.setNumExecutors(1); //Integer.parseInt(util.getNumberExecutor(proj))
+        case "SPARK":
+          File sparkFile = new File(sparkJarFilePath);
+          String sparkJarFinalPath = "hdfs://" + destination + File.separator + sparkFile.getName();
+          args.setMainClass(sparkMainClass);
+          args.setAppPath(sparkJarFinalPath);
+          args.setCommandArgs(sparkJobArgs);
+
+          args.setDriverMemInMbs(sparkDriverMemInMbs);
+          args.setDriverVC(sparkDriverVC);
+          args.setExecutorMemInMbs(sparkExecutorMemInMbs);
+          args.setExecutorVC(sparkExecutorVC);
+          args.setDynamic(sparkDynamic);
+          if (sparkDynamic)
+            args.setNumExecutors(sparkNumExecutors);
           else {
-            args.setInitExecutors(1); //Integer.parseInt(HopsPluginUtils.getInitExec(proj))
-            args.setMaxExecutors(2); //Integer.parseInt(HopsPluginUtils.getMaxExec(proj))
-            args.setMinExecutors(1); //Integer.parseInt(HopsPluginUtils.getMinExec(proj))
+            args.setInitExecutors(sparkInitExecutors);
+            args.setMaxExecutors(sparkMaxExecutors);
+            args.setMinExecutors(sparkMinExecutors);
           }
-          if (false) { //util.isAdvanced(proj)
-            args.setAdvanceConfig(true);
-            args.setArchives(""); //util.getAdvancedArchive(proj)
-            args.setFiles(""); //util.getAdvancedFiles(proj)
-            args.setPythonDependency(""); //util.getPythonDependency(proj)
-            args.setJars(""); //util.getAdvancedJars(proj)
-            args.setProperties(""); //util.getMoreProperties(proj)
+          if (sparkAdvanceConfig) {
+            args.setAdvanceConfig(sparkAdvanceConfig);
+            args.setArchives(sparkArchives);
+            args.setFiles(sparkAttachfiles);
+            args.setPythonDependency(sparkPythonDependency);
+            args.setJars(sparkAttachjars);
+            args.setProperties(sparkProperties);
           }
           break;
         case "FLINK":
-          args.setJobManagerMemory(jobManagerMemory);
-          args.setTaskManagerMemory(taskManagerMemory);
-          args.setNumTaskManager(numTaskManager);
-          args.setNumSlots(numSlots);
-          if (isAdvanced) {
+          jobName = (String) flinkJobConfig.get("jobName");
+
+          args.setJobManagerMemory(flinkJobManagerMemory);
+          args.setTaskManagerMemory(flinkTaskManagerMemory);
+          args.setNumTaskManager(flinkNumTaskManager);
+          args.setNumSlots(flinkNumSlots);
+          if (flinkIsAdvanced) {
             args.setAdvanceConfig(true);
-            args.setProperties(advancedProperties);
+            args.setProperties(flinkAdvancedProperties);
           }
           break;
       }
 
       // create job
-      JobCreateAction createJob = new JobCreateAction(hopsworksAPIConfig, jobName, args);
+      JobCreateAction createJob = createJob = new JobCreateAction(hopsworksAPIConfig, jobName, args);
       int status = createJob.execute();
 
       if (status == HttpStatus.SC_OK || status == HttpStatus.SC_CREATED) {
@@ -143,7 +199,15 @@ public class HopsCreateJob {
   }
 
   public static void main(String[] args) throws Exception {
+    Options options = new Options();
+    options.addOption("jobType", "jobType", true, "Job type SPARK|FLINK");
+    options.addOption("sparkJarFilePath", "sparkJarFilePath", true,
+        "path to spark program binary");
+
+    CommandLineParser parser = new BasicParser();
+    CommandLine commandLine = parser.parse(options, args);
+
     HopsCreateJob hopsCreateJob = new HopsCreateJob();
-    hopsCreateJob.actionPerformed();
+    hopsCreateJob.actionPerformed(commandLine.getOptionValue("jobType"), commandLine.getOptionValue("sparkJarFilePath"));
   }
 }

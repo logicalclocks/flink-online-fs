@@ -1,11 +1,11 @@
 {
   "hopsworksApiKey": "ngAVMegy47qOceBF.vPDmWEDNJPk2wfSAaO3N7ZYZt2t3TAJSTblK1sZG8jMv7dpoUkfV1BKBxM659TUd",
   "hopsworksUrl": "https://706ba130-0b4a-11ec-9be0-8702487be79c.cloud.hopsworks.ai",
-  "projectName": "flinktest",
+  "projectName": "onlineFS",
   "jobType": "FLINK",
   "jobName": "flinkJob",
-  "destination": "/Projects/flinktest/Resources",
-  "userArgs": "",
+  "destination": "/Projects/onlineFS/Resources",
+  "userArgs": "--arg1 a1 --arg2 a2",
   "jobManagerMemory": 1024,
   "taskManagerMemory": 1024,
   "numTaskManager": 1,
@@ -13,5 +13,5 @@
   "isAdvanced": false,
   "advancedProperties": "",
   "userExecutionId": 0,
-  "mainClass": "com.logicalclocks.aggregation.Aggregations"
+  "mainClass": "com.logicalclocks.aggregations.Aggregations"
 }

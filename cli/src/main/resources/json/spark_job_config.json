@@ -1,0 +1,19 @@
+{
+  "driverMemInMbs": 2048,
+  "driverVC": 1,
+  "executorMemInMbs": 4096,
+  "executorVC": 1,
+  "dynamic": false,
+  "numExecutors":1,
+  "initExecutors": 1,
+  "maxExecutors": 100,
+  "minExecutors": 0,
+  "advanceConfig": true,
+  "minSyncIntervalSeconds": 1,
+  "archives": "",
+  "files": "",
+  "pythonDependency": "",
+  "jars": "",
+  "properties": "",
+  "sparkMainClass": "com.logicalclocks.microbatching.Microbatching"
+}

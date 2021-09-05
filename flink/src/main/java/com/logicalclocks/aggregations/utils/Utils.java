@@ -25,6 +25,9 @@ import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumerBase;
 
 import java.io.File;
 import java.io.IOException;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.util.Date;
 import java.util.Map;
 import java.util.Properties;
 import java.util.stream.Collectors;
@@ -102,10 +105,9 @@ public class Utils {
 
     Properties kafkaProperties = getKafkaProperties();
     FlinkKafkaConsumerBase<Map<String, Object>> kafkaSource = new FlinkKafkaConsumer<>(
-        sourceTopic, new StringToMapDeserializationSchema(), kafkaProperties).setStartFromEarliest();
-
-    kafkaSource.setStartFromEarliest();
-    kafkaSource.assignTimestampsAndWatermarks(new OutOfOrdernessTimestampAndWatermarksAssigner(
+        sourceTopic, new StringToMapDeserializationSchema(), kafkaProperties)
+        .setStartFromEarliest()
+        .assignTimestampsAndWatermarks(new OutOfOrdernessTimestampAndWatermarksAssigner(
         inferTimeSize (watermarkSize, watermarkTimeUnit) , timestampField, eventTimeFormat, eventTimeType));
     return env.addSource(kafkaSource);
   }
@@ -121,10 +123,9 @@ public class Utils {
 
     Properties kafkaProperties = getKafkaProperties(propsMap);
     FlinkKafkaConsumerBase<Map<String, Object>> kafkaSource = new FlinkKafkaConsumer<>(
-        sourceTopic, new StringToMapDeserializationSchema(), kafkaProperties).setStartFromEarliest();
-
-    kafkaSource.setStartFromEarliest();
-    kafkaSource.assignTimestampsAndWatermarks(new OutOfOrdernessTimestampAndWatermarksAssigner(
+          sourceTopic, new StringToMapDeserializationSchema(), kafkaProperties)
+        .setStartFromEarliest()
+        .assignTimestampsAndWatermarks(new OutOfOrdernessTimestampAndWatermarksAssigner(
         inferTimeSize (watermarkSize, watermarkTimeUnit) , timestampField, eventTimeFormat, eventTimeType));
 
     return env.addSource(kafkaSource);
@@ -163,7 +164,8 @@ public class Utils {
        */
       // convert JSON string to Java Map
       ObjectMapper objectMapper = new ObjectMapper();
-      return objectMapper.readValue(message, Map.class);
+      Map<String, Object> result = objectMapper.readValue(message, Map.class);
+      return result;
     }
 
     @Override

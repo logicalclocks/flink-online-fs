@@ -31,7 +31,6 @@ public class Aggregations {
     env.getConfig().enableObjectReuse();
     env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime);
 
-
     // aggregations config
     // the stream holding the file content
     Map<Object, Object> aggregationSpecs;
@@ -45,7 +44,10 @@ public class Aggregations {
     }
 
     String keyName = (String) aggregationSpecs.get("key");
-    String source_topic = (String) aggregationSpecs.get("online_source");
+    Map<Object, Object> onlineSource = (Map<Object, Object>) aggregationSpecs.get("online_source");
+    String source_topic = (String) onlineSource.get("topic_name");
+    boolean externalKafka = (boolean) onlineSource.get("external_kafka");
+
     String timestampField = (String) aggregationSpecs.get("event_time");
     String eventTimeFormat = (String) aggregationSpecs.get("event_time_format");
     String eventTimeType = (String) aggregationSpecs.get("event_time_type");
@@ -58,11 +60,20 @@ public class Aggregations {
     String slideTimeUnit = (String) aggregationSpecs.get("slide_time_unit");
     Integer gapSize = (Integer) aggregationSpecs.get("gap_size");
     String gapTimeUnit = (String) aggregationSpecs.get("gap_time_unit");
+    boolean windowStart = (boolean) aggregationSpecs.get("window_start");
+    boolean windowEnd  = (boolean) aggregationSpecs.get("window_end");
 
     Map<String, Object> sourceSilters = (Map<String, Object>) aggregationSpecs.get("source_filters");
     // get source stream
-    DataStream<Map<String, Object>> sourceStream = utils.getSourceKafkaStream(env, source_topic,
-        timestampField, eventTimeFormat, eventTimeType, watermark, watermarkTimeUnit);
+    DataStream<Map<String, Object>> sourceStream;
+    if(!externalKafka){
+      sourceStream = utils.getSourceKafkaStream(env, source_topic,
+          timestampField, eventTimeFormat, eventTimeType, watermark, watermarkTimeUnit);
+    } else {
+      Map<String, String> externalKafkaConfig = (Map<String, String>) onlineSource.get("external_kafka_config");
+      sourceStream = utils.getSourceKafkaStream(env, externalKafkaConfig, source_topic,
+          timestampField, eventTimeFormat, eventTimeType, watermark, watermarkTimeUnit);
+    }
 
     // get hsfs handle
     FeatureStore fs = utils.getFeatureStoreHandle();
@@ -90,7 +101,7 @@ public class Aggregations {
             .window(utils.inferWindowType(windowType, utils.inferTimeSize(windowSize, windowTimeUnit),
                 utils.inferTimeSize(slideSize, slideTimeUnit), utils.inferTimeSize(gapSize, gapTimeUnit)))
             .apply(new AggregateRichWindowFunction(primaryKeys.get(0), featureGroup.getDeserializedAvroSchema(),
-                aggregations));
+                aggregations, windowStart, windowEnd));
 
     //send to online fg topic
     Properties featureGroupKafkaPropertiies = utils.getKafkaProperties(featureGroup);

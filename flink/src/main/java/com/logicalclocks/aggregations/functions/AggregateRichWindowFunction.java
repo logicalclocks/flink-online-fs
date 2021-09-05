@@ -15,6 +15,7 @@ import org.apache.flink.util.Collector;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
@@ -25,6 +26,10 @@ public class AggregateRichWindowFunction extends RichWindowFunction<Map<String, 
 
   // field to aggregation method
   Map<String, Map<String, String>> fieldsToAggregation;
+
+  // whether to output window end or not
+  private boolean windowStart;
+  private boolean windowEnd;
 
   // descriptive statistics
   private DescriptiveStatistics descriptiveStatistics;
@@ -37,17 +42,22 @@ public class AggregateRichWindowFunction extends RichWindowFunction<Map<String, 
   private transient Schema schema;
   private transient GenericData.Record record;
 
+
   public AggregateRichWindowFunction(String primaryKeyName, Schema schema, Map<String, Map<String, String>>
-      fieldsToAggregation) {
+      fieldsToAggregation, boolean windowStart, boolean windowEnd) {
     this.primaryKeyName = primaryKeyName;
     // TODO (davit): why not schema directly?
     this.schemaString = schema.toString();
     this.fieldsToAggregation = fieldsToAggregation;
+    this.windowStart = windowStart;
+    this.windowEnd = windowEnd;
   }
 
   @Override
   public void apply(Object key, TimeWindow timeWindow, Iterable<Map<String, Object>> iterable,
                     Collector<byte[]> collector) throws Exception {
+    // start aggregations
+    record.put("aggregation_start_time", new Date().getTime());
     for (String outputName : fieldsToAggregation.keySet()) {
       Map<String, String> aggregationToFeature = fieldsToAggregation.get(outputName);
       for (String field : aggregationToFeature.keySet()) {
@@ -56,6 +66,13 @@ public class AggregateRichWindowFunction extends RichWindowFunction<Map<String, 
       }
     }
     record.put(primaryKeyName, key);
+    if (windowStart) {
+      record.put("start",  timeWindow.getEnd());
+    }
+    if (windowEnd) {
+      record.put("end",  timeWindow.getStart());
+    }
+    record.put("aggregation_end_time",  new Date().getTime());
     collector.collect(encode(record));
   }
 

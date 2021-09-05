@@ -4,9 +4,13 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.hops.cli.action.FileUploadAction;
 import io.hops.cli.action.JobRunAction;
 import io.hops.cli.config.HopsworksAPIConfig;
-import org.apache.http.HttpStatus;
 
-import java.io.File;
+import org.apache.http.HttpStatus;
+import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.CommandLineParser;
+import org.apache.commons.cli.BasicParser;
+import org.apache.commons.cli.Options;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.HashMap;
@@ -16,35 +20,51 @@ import java.util.logging.Logger;
 
 public class HopsRunJob {
 
-  public void actionPerformed() throws Exception {
+  public void actionPerformed(String jobType, String jarPath) throws Exception {
 
     // jobs config
-    Map<Object, Object> jobsConfig;
-    InputStream inputStream = getClass().getClassLoader().getResourceAsStream("json/flink_job_config.json");
+    Map<Object, Object> flinkJobsConfig;
+    InputStream finkJobConfigStream = getClass().getClassLoader().getResourceAsStream("json/flink_job_config.json");
     try {
-      jobsConfig =
-          new ObjectMapper().readValue(inputStream, HashMap.class);
-      inputStream.close();
+      flinkJobsConfig =
+          new ObjectMapper().readValue(finkJobConfigStream, HashMap.class);
+      finkJobConfigStream.close();
     } catch (Exception e) {
       throw new Exception(e.toString());
     }
 
-    String hopsworksApiKey = (String) jobsConfig.get("hopsworksApiKey");
-    String hopsworksUrl = (String) jobsConfig.get("hopsworksUrl");
-    String projectName = (String) jobsConfig.get("projectName");
-    String jobName = (String) jobsConfig.get("jobName");
-    String destination = (String) jobsConfig.get("destination");
-    String userArgs = (String) jobsConfig.get("userArgs");
+    // aggregations config
+    Map<Object, Object> aggregationSpecs;
+    InputStream aggConfigStream = getClass().getClassLoader().getResourceAsStream("json/flink_aggregations_config.json");
+    try {
+      aggregationSpecs =
+          new ObjectMapper().readValue(aggConfigStream, HashMap.class);
+      aggConfigStream.close();
+    } catch (Exception e) {
+      throw new Exception(e.toString());
+    }
 
-    String jobType = (String) jobsConfig.get("jobType");
+    Map<Object, Object> sparkJobConfig;
+    InputStream sparkJobConfigStream = getClass().getClassLoader().getResourceAsStream("json/spark_job_config.json");
+    try {
+      sparkJobConfig =
+          new ObjectMapper().readValue(sparkJobConfigStream, HashMap.class);
+      sparkJobConfigStream.close();
+    } catch (Exception e) {
+      throw new Exception(e.toString());
+    }
 
-    String mainClass = (String) jobsConfig.get("mainClass");
-    String localFilePath = "/Users/davitbz/IdeaProjects/flink-online-fs/flink/target/flink-1.0-SNAPSHOT.jar";
-    File file = new File(localFilePath);
-    String finalPath = destination + File.separator + file.getName();
+    String hopsworksApiKey = (String) flinkJobsConfig.get("hopsworksApiKey");
+    String hopsworksUrl = (String) flinkJobsConfig.get("hopsworksUrl");
+    String projectName = (String) flinkJobsConfig.get("projectName");
+
+    String flinkJobName = (String) flinkJobsConfig.get("jobName");
+    String flinkDestination = (String) flinkJobsConfig.get("destination");
+    String flinkUserArgs = (String) flinkJobsConfig.get("userArgs");
+    String flinkMainClass = (String) flinkJobsConfig.get("mainClass");
 
     String hopsProject=null;
-    Integer userExecutionId= (Integer) jobsConfig.get("userExecutionId");;
+    Integer userExecutionId= (Integer) flinkJobsConfig.get("userExecutionId");;
 
     int executionId=0;
     if(!userExecutionId.equals(0)){
@@ -59,13 +79,29 @@ public class HopsRunJob {
       int status;
       JobRunAction runJob;
       HopsworksAPIConfig hopsworksAPIConfig = new HopsworksAPIConfig(hopsworksApiKey, hopsworksUrl, projectName);
-      FileUploadAction uploadAction = new FileUploadAction(hopsworksAPIConfig,destination,localFilePath);
+      FileUploadAction uploadAction = new FileUploadAction(hopsworksAPIConfig, flinkDestination, jarPath);
       hopsProject = uploadAction.getProjectId(); //check if valid project,throws null pointer
-      if (!jobType.equals("FLINK")){ //HopsPluginUtils.FLINK
+      if (!jobType.equals("FLINK")){
         uploadAction.execute(); //upload app first if not flink
-        runJob=new JobRunAction(hopsworksAPIConfig,jobName,userArgs);
+        String jobName;
+        Integer minSyncIntervalSeconds = (Integer) sparkJobConfig.get("minSyncIntervalSeconds");
+        String sparkJobArgs;
+        String sparkMainClass = (String) sparkJobConfig.get("sparkMainClass");
+        if (sparkMainClass.equals("com.logicalclocks.hudi.DeltaStreamerJob")) {
+          jobName = "deltaStreamerJob";
+          sparkJobArgs = String.format("-featureGroupName %s -featureGroupVersion %d -minSyncIntervalSeconds %d",
+              (String) aggregationSpecs.get("feature_group_name"),
+              (Integer) aggregationSpecs.get("feature_group_version"), minSyncIntervalSeconds);
+        } else {
+          jobName = "microbatching";
+          sparkJobArgs = String.format("-featureGroupName %s -featureGroupVersion %d",
+              (String) aggregationSpecs.get("feature_group_name"),
+              (Integer) aggregationSpecs.get("feature_group_version"));
+        }
+
+        runJob=new JobRunAction(hopsworksAPIConfig,jobName,sparkJobArgs);
         if(!runJob.getJobExists()){ //check job name exists
-          System.out.println("e.getProject(), HopsPluginUtils.INVALID_JOBNAME" + jobName);
+          System.out.println("e.getProject(), HopsPluginUtils.INVALID_JOBNAME" + sparkJobArgs);
           return;
         }
         //execute run job
@@ -78,13 +114,13 @@ public class HopsRunJob {
           if(runJob.getJsonResult().containsKey("usrMsg"))
             System.out.println("e.getProject()" + " Job Submit Failed | "
                 +runJob.getJsonResult().getString("usrMsg"));
-          else System.out.println("e.getProject()" + " Job: "+jobName+" | Submit Failed");
+          else System.out.println("e.getProject()" + " Job: "+flinkJobName+" | Submit Failed");
         }
       } else {
-        SubmitFlinkJob submitFlinkJob = new SubmitFlinkJob(hopsworksAPIConfig, jobName);
-        submitFlinkJob.setLocal_file_path(localFilePath);
-        submitFlinkJob.setMainClass(mainClass);
-        submitFlinkJob.setUserArgs(userArgs);
+        SubmitFlinkJob submitFlinkJob = new SubmitFlinkJob(hopsworksAPIConfig, flinkJobName);
+        submitFlinkJob.setLocal_file_path(jarPath);
+        submitFlinkJob.setMainClass(flinkMainClass);
+        submitFlinkJob.setUserArgs(flinkUserArgs);
         submitFlinkJob.setUserExecId(executionId);
         status=submitFlinkJob.execute();
         if (status== HttpStatus.SC_OK){
@@ -109,7 +145,16 @@ public class HopsRunJob {
   }
 
   public static void main(String[] args) throws Exception {
+    Options options = new Options();
+    options.addOption("jobType", "jobType", true, "Job type SPARK|FLINK");
+    options.addOption("jarFilePath", "jarFilePath", true,
+        "path to spark program binary");
+
+    CommandLineParser parser = new BasicParser();
+    CommandLine commandLine = parser.parse(options, args);
+
     HopsRunJob hopsRunJob = new HopsRunJob();
-    hopsRunJob.actionPerformed();
+    hopsRunJob.actionPerformed(commandLine.getOptionValue("jobType"),
+        commandLine.getOptionValue("jarFilePath"));
   }
 }
