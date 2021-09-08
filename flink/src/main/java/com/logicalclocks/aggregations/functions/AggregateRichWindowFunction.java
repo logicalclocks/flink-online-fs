@@ -111,8 +111,8 @@ public class AggregateRichWindowFunction extends RichWindowFunction<Map<String, 
     return bytes;
   }
 
-  private Long processingDelay(Long eventTimeStamp, Long aggregationStartTime) {
-    return aggregationStartTime - eventTimeStamp;
+  private Long processingDelay(Long eventTimeStamp, Long aggregationEndTime) {
+    return (aggregationEndTime - eventTimeStamp);
   }
 
   private Object windowAggregationStats(String field, String method, Iterable<Map<String, Object>> iterable) {
@@ -125,7 +125,8 @@ public class AggregateRichWindowFunction extends RichWindowFunction<Map<String, 
       }
       if (method.equals("max_processing_delay")) {
         descriptiveStatistics.addValue((double) processingDelay((long) data.get(field), new Date().getTime()));
-      } else if (method.equals("max_event_timestamp")) {
+      }
+      if (method.equals("max_event_timestamp")) {
         descriptiveStatistics.addValue(Double.valueOf((long) data.get(field)));
       }
     }
