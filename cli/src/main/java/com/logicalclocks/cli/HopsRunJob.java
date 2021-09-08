@@ -59,7 +59,7 @@ public class HopsRunJob {
     String projectName = (String) flinkJobsConfig.get("projectName");
 
     String flinkJobName = (String) flinkJobsConfig.get("jobName");
-    String flinkDestination = (String) flinkJobsConfig.get("destination");
+    String flinkDestination = "/Projects/" + projectName + "/Resources";
     String flinkUserArgs = (String) flinkJobsConfig.get("userArgs");
     String flinkMainClass = (String) flinkJobsConfig.get("mainClass");
 

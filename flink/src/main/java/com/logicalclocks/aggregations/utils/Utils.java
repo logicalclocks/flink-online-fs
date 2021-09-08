@@ -1,7 +1,7 @@
 package com.logicalclocks.aggregations.utils;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.logicalclocks.aggregations.functions.OutOfOrdernessTimestampAndWatermarksAssigner;
+import com.logicalclocks.aggregations.functions.StringToMapDeserializationSchema;
 import com.logicalclocks.hsfs.FeatureGroup;
 import com.logicalclocks.hsfs.FeatureStore;
 import com.logicalclocks.hsfs.FeatureStoreException;
@@ -10,9 +10,6 @@ import com.logicalclocks.hsfs.metadata.KafkaApi;
 
 import jdk.nashorn.internal.runtime.regexp.joni.exception.ValueException;
 import org.apache.commons.io.FileUtils;
-import org.apache.flink.api.common.serialization.DeserializationSchema;
-import org.apache.flink.api.common.typeinfo.TypeHint;
-import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.windowing.assigners.EventTimeSessionWindows;
@@ -25,9 +22,7 @@ import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumerBase;
 
 import java.io.File;
 import java.io.IOException;
-import java.time.Instant;
-import java.time.LocalDateTime;
-import java.util.Date;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.stream.Collectors;
@@ -100,15 +95,18 @@ public class Utils {
                                                               String eventTimeFormat,
                                                               String eventTimeType,
                                                               Integer watermarkSize,
-                                                              String watermarkTimeUnit)
+                                                              String watermarkTimeUnit,
+                                                              List<String> sourceFieldNames,
+                                                              boolean isNestedSchema)
       throws Exception {
 
     Properties kafkaProperties = getKafkaProperties();
     FlinkKafkaConsumerBase<Map<String, Object>> kafkaSource = new FlinkKafkaConsumer<>(
-        sourceTopic, new StringToMapDeserializationSchema(), kafkaProperties)
-        .setStartFromEarliest()
+        sourceTopic, new StringToMapDeserializationSchema(sourceFieldNames, timestampField, eventTimeFormat,
+        eventTimeType,  isNestedSchema), kafkaProperties)
+        .setStartFromLatest()
         .assignTimestampsAndWatermarks(new OutOfOrdernessTimestampAndWatermarksAssigner(
-        inferTimeSize (watermarkSize, watermarkTimeUnit) , timestampField, eventTimeFormat, eventTimeType));
+        inferTimeSize (watermarkSize, watermarkTimeUnit) , timestampField));
     return env.addSource(kafkaSource);
   }
 
@@ -119,14 +117,17 @@ public class Utils {
                                                               String eventTimeFormat,
                                                               String eventTimeType,
                                                               Integer watermarkSize,
-                                                              String watermarkTimeUnit) throws Exception {
+                                                              String watermarkTimeUnit,
+                                                              List<String> sourceFieldNames,
+                                                              boolean isNestedSchema) throws Exception {
 
     Properties kafkaProperties = getKafkaProperties(propsMap);
     FlinkKafkaConsumerBase<Map<String, Object>> kafkaSource = new FlinkKafkaConsumer<>(
-          sourceTopic, new StringToMapDeserializationSchema(), kafkaProperties)
-        .setStartFromEarliest()
+          sourceTopic, new StringToMapDeserializationSchema(sourceFieldNames, timestampField, eventTimeFormat,
+        eventTimeType, isNestedSchema), kafkaProperties)
+        .setStartFromLatest()
         .assignTimestampsAndWatermarks(new OutOfOrdernessTimestampAndWatermarksAssigner(
-        inferTimeSize (watermarkSize, watermarkTimeUnit) , timestampField, eventTimeFormat, eventTimeType));
+        inferTimeSize (watermarkSize, watermarkTimeUnit) , timestampField));
 
     return env.addSource(kafkaSource);
   }
@@ -144,42 +145,6 @@ public class Utils {
 
   private static String readMaterialPassword() throws Exception {
     return FileUtils.readFileToString(new File("material_passwd"));
-  }
-
-  public static class StringToMapDeserializationSchema implements DeserializationSchema<Map<String, Object>> {
-
-    @Override
-    public Map<String, Object> deserialize(byte[] message) throws IOException {
-      /*
-        ObjectMapper objectMapper = new ObjectMapper();
-        objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
-
-        JsonNode jsonNodeRoot = objectMapper.readTree(element);
-        JsonNode jsonNodeDatetimeField = null;
-        if (jsonNodeRoot.has(timestampField)){
-          jsonNodeDatetimeField = jsonNodeRoot.get(timestampField);
-        } else {
-          throw new VerifyError("Provided field doesn't exist");
-        }
-       */
-      // convert JSON string to Java Map
-      ObjectMapper objectMapper = new ObjectMapper();
-      Map<String, Object> result = objectMapper.readValue(message, Map.class);
-      return result;
-    }
-
-    @Override
-    public boolean isEndOfStream(Map<String, Object> stringObjectMap) {
-      return false;
-    }
-
-    @Override
-    public TypeInformation<Map<String, Object>> getProducedType() {
-      TypeInformation<Map<String, Object>> typeInformation = TypeInformation
-          .of(new TypeHint<Map<String, Object>>() {
-          });
-      return typeInformation;
-    }
   }
 
   public Time inferTimeSize (Integer size, String timeUnit) {

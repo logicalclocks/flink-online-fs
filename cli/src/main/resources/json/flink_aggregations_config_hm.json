@@ -1,29 +1,29 @@
 {
   "feature_group_name":"test_fg",
-  "feature_group_version": 2,
+  "feature_group_version": 16,
   "parallelism": 4,
   "key": "customer_id",
   "event_time": "received_ts",
   "event_time_type": "String",
-  "event_time_format": "yyyy-MM-dd'T'HH:mm:ss.SSS",
+  "event_time_format": "yyyy-MM-ddTHH:mm:ss.SSS",
   "window_size": 1,
   "window_time_unit": "hours",
-  "watermark": 2,
+  "watermark": 1,
   "watermark_time_unit": "hours",
-  "window_type": "sliding",
-  "slide_size": 30,
+  "window_type": "tumbling",
+  "slide_size": 0,
   "slide_time_unit": "minutes",
   "gap_size": 0,
   "gap_time_unit": "minutes",
   "aggregations" : {
-    "count_added_to_bag" : {
-      "event_type" : "count"
-    },
     "max_processing_delay" : {
       "received_ts": "max_processing_delay"
     },
+    "count_added_to_bag" : {
+      "event_type" : "count"
+    },
     "max_event_timestamp" : {
-      "received_ts": "max_event_timestamp"
+      "received_ts": "received_ts"
     }
   },
   "window_start": false,
@@ -34,7 +34,7 @@
   "online_source": {
     "external_kafka": false,
     "topic_name":
-    "performance_test_events_5",
+    "performance_test_events",
     "nested_schema": true,
     "external_kafka_config": {
       "kafka.bootstrap.servers": "streamfsp.servicebus.windows.net:9093",

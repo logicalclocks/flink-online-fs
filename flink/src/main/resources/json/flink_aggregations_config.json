@@ -1,39 +1,51 @@
 {
-  "feature_group_name":"card_transactions_1h_agg",
-  "feature_group_version": 3,
-  "key": "cc_num",
-  "event_time": "datetime",
+  "feature_group_name":"test_fg",
+  "feature_group_version": 2,
+  "parallelism": 4,
+  "key": "customer_id",
+  "event_time": "received_ts",
   "event_time_type": "String",
-  "event_time_format": "yyyy-MM-dd HH:mm:ss",
+  "event_time_format": "yyyy-MM-dd'T'HH:mm:ss.SSS",
   "window_size": 1,
   "window_time_unit": "hours",
-  "watermark": 1,
+  "watermark": 2,
   "watermark_time_unit": "hours",
-  "window_type": "tumbling",
-  "slide_size": 0,
+  "window_type": "sliding",
+  "slide_size": 30,
   "slide_time_unit": "minutes",
   "gap_size": 0,
   "gap_time_unit": "minutes",
   "aggregations" : {
-    "avg_amt_per_1h" : {
-      "amount": "average"
+    "count_added_to_bag" : {
+      "event_type" : "count"
     },
-    "stdev_amt_per_1h": {
-      "amount": "stdev"
+    "max_processing_delay" : {
+      "received_ts": "max_processing_delay"
     },
-    "num_trans_per_1h" : {
-      "cc_num" : "count"
+    "max_event_timestamp" : {
+      "received_ts": "max_event_timestamp"
     }
   },
   "window_start": false,
   "window_end": true,
+  "aggregation_start_time": true,
+  "aggregation_end_time": true,
   "source_filters": {},
   "online_source": {
     "external_kafka": false,
-    "external_kafka_config": {
-      "...": "..."
-    },
     "topic_name":
-    "credit_card_transactions"
+    "performance_test_events_5",
+    "nested_schema": true,
+    "external_kafka_config": {
+      "kafka.bootstrap.servers": "streamfsp.servicebus.windows.net:9093",
+      "kafka.sasl.mechanism": "PLAIN",
+      "kafka.security.protocol": "SASL_SSL",
+      "kafka.request.timeout.ms": "60000",
+      "kafka.session.timeout.ms": "30000",
+      "startingOffsets": "latest",
+      "maxOffsetsPerTrigger": "25000",
+      "kafka.sasl.jaas.config": "...",
+      "kafka.group.id": "..."
+    }
   }
 }

@@ -15,6 +15,7 @@
         <spark.version>3.1.1.0</spark.version>
         <scala.version>2.12.10</scala.version>
         <scala-short.version>2.12</scala-short.version>
+        <hsfs.version>2.3.3</hsfs.version>
     </properties>
 
 
@@ -74,7 +75,7 @@
         <dependency>
             <groupId>com.logicalclocks</groupId>
             <artifactId>hsfs</artifactId>
-            <version>3.0.0-SNAPSHOT</version>
+            <version>${hsfs.version}</version>
             <scope>provided</scope>
         </dependency>
     </dependencies>

@@ -71,7 +71,7 @@ public class HopsCreateJob {
     String hopsworksApiKey = (String) flinkJobConfig.get("hopsworksApiKey");
     String hopsworksUrl = (String) flinkJobConfig.get("hopsworksUrl");
     String projectName = (String) flinkJobConfig.get("projectName");
-    String destination = (String) flinkJobConfig.get("destination");
+    String destination = "/Projects/" + projectName + "/Resources";
 
     Integer flinkJobManagerMemory  = (Integer) flinkJobConfig.get("jobManagerMemory");;
     Integer flinkTaskManagerMemory =  (Integer) flinkJobConfig.get("taskManagerMemory");;

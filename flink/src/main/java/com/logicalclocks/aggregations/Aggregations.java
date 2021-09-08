@@ -14,6 +14,7 @@ import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaProducer;
 
 import java.io.InputStream;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -25,11 +26,6 @@ public class Aggregations {
   private Utils utils = new Utils();
 
   public void run() throws Exception {
-
-    // define stream env
-    StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
-    env.getConfig().enableObjectReuse();
-    env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime);
 
     // aggregations config
     // the stream holding the file content
@@ -47,6 +43,7 @@ public class Aggregations {
     Map<Object, Object> onlineSource = (Map<Object, Object>) aggregationSpecs.get("online_source");
     String source_topic = (String) onlineSource.get("topic_name");
     boolean externalKafka = (boolean) onlineSource.get("external_kafka");
+    boolean isNestedSchema = (boolean) onlineSource.get("nested_schema");
 
     String timestampField = (String) aggregationSpecs.get("event_time");
     String eventTimeFormat = (String) aggregationSpecs.get("event_time_format");
@@ -60,19 +57,37 @@ public class Aggregations {
     String slideTimeUnit = (String) aggregationSpecs.get("slide_time_unit");
     Integer gapSize = (Integer) aggregationSpecs.get("gap_size");
     String gapTimeUnit = (String) aggregationSpecs.get("gap_time_unit");
+    boolean aggregationStartTime = (boolean) aggregationSpecs.get("aggregation_start_time");
+    boolean aggregationEndTime = (boolean) aggregationSpecs.get("aggregation_end_time");
     boolean windowStart = (boolean) aggregationSpecs.get("window_start");
     boolean windowEnd  = (boolean) aggregationSpecs.get("window_end");
-
+    Integer parallelism = (Integer) aggregationSpecs.get("parallelism");
+    Map<String, Map<String, String>> aggregations = (Map<String, Map<String, String>>)
+        aggregationSpecs.get("aggregations");
     Map<String, Object> sourceSilters = (Map<String, Object>) aggregationSpecs.get("source_filters");
+
+    List<String> sourceFieldNames = aggregations.values().stream().map(Map::keySet)
+        .flatMap(Collection::stream)
+        .collect(Collectors.toList());
+    sourceFieldNames.add(keyName);
+
+    // define stream env
+    StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
+    env.getConfig().enableObjectReuse();
+    env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime);
+    env.setParallelism(parallelism);
+
     // get source stream
     DataStream<Map<String, Object>> sourceStream;
     if(!externalKafka){
       sourceStream = utils.getSourceKafkaStream(env, source_topic,
-          timestampField, eventTimeFormat, eventTimeType, watermark, watermarkTimeUnit);
+          timestampField, eventTimeFormat, eventTimeType, watermark, watermarkTimeUnit, sourceFieldNames,
+          isNestedSchema);
     } else {
       Map<String, String> externalKafkaConfig = (Map<String, String>) onlineSource.get("external_kafka_config");
       sourceStream = utils.getSourceKafkaStream(env, externalKafkaConfig, source_topic,
-          timestampField, eventTimeFormat, eventTimeType, watermark, watermarkTimeUnit);
+          timestampField, eventTimeFormat, eventTimeType, watermark, watermarkTimeUnit, sourceFieldNames,
+          isNestedSchema);
     }
 
     // get hsfs handle
@@ -82,8 +97,6 @@ public class Aggregations {
     FeatureGroup featureGroup = fs.getFeatureGroup((String) aggregationSpecs.get("feature_group_name"),
         (Integer) aggregationSpecs.get("feature_group_version"));
 
-    Map<String, Map<String, String>> aggregations = (Map<String, Map<String, String>>)
-        aggregationSpecs.get("aggregations");
     List<String> primaryKeys = featureGroup.getFeatures().stream().filter(Feature::getPrimary)
         .map(Feature::getName).collect(Collectors.toList());
 
@@ -101,7 +114,7 @@ public class Aggregations {
             .window(utils.inferWindowType(windowType, utils.inferTimeSize(windowSize, windowTimeUnit),
                 utils.inferTimeSize(slideSize, slideTimeUnit), utils.inferTimeSize(gapSize, gapTimeUnit)))
             .apply(new AggregateRichWindowFunction(primaryKeys.get(0), featureGroup.getDeserializedAvroSchema(),
-                aggregations, windowStart, windowEnd));
+                aggregations, windowStart, windowEnd, aggregationStartTime, aggregationEndTime));
 
     //send to online fg topic
     Properties featureGroupKafkaPropertiies = utils.getKafkaProperties(featureGroup);
@@ -110,7 +123,7 @@ public class Aggregations {
         featureGroupKafkaPropertiies,
         FlinkKafkaProducer.Semantic.AT_LEAST_ONCE));
 
-    env.execute();
+    env.execute("Window aggregation of " + windowType);
   }
 
   public static void main(String[] args) throws Exception {
