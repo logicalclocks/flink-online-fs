@@ -1,6 +1,6 @@
 {
-  "hopsworksApiKey": "egx7g1W0CMTl8OHo.z54USIk72BUdQ8PEMu53YwtZG0XZOs3pD8h4TSrlSdFFR2zhCWfishJ6T81m689l",
-  "hopsworksUrl": "https://64e4be90-0f47-11ec-a4b2-4dec5d087aba.cloud.hopsworks.ai",
+  "hopsworksApiKey": "JH9WFrAp9ZQcdTjH.VYjJsNBw1snq3TKI2QY13vhFtLRc7KJhFzF2BysBZYAqQnq0aFRefEg88Ivce0Jn",
+  "hopsworksUrl": "https://25a1ef50-10b4-11ec-9027-5b3e603261f0.cloud.hopsworks.ai",
   "projectName": "onlineFS",
   "jobType": "FLINK",
   "jobName": "flinkJob",
