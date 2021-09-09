@@ -14,9 +14,10 @@ import org.apache.flink.util.Collector;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -34,9 +35,8 @@ public class AggregateRichWindowFunction extends RichWindowFunction<Map<String, 
   private boolean aggregationStartTime;
   private boolean aggregationEndTime;
 
-
-  // descriptive statistics
-  private DescriptiveStatistics descriptiveStatistics;
+  // descriptive statistics container
+  private Map<String, DescriptiveStatistics> descriptiveStatisticsContainer = new HashMap<>();
 
   // TODO (davit): why not schema directly?
   // Avro schema in JSON format.
@@ -46,7 +46,7 @@ public class AggregateRichWindowFunction extends RichWindowFunction<Map<String, 
   private transient Schema schema;
   private transient GenericData.Record record;
 
-  List<String> specMethods = Arrays.asList("count", "max_processing_delay", "max_event_timestamp");
+  List<String> specMethods = Arrays.asList("count", "max_event_timestamp_fn");
 
   public AggregateRichWindowFunction(String primaryKeyName, Schema schema, Map<String, Map<String, String>>
       fieldsToAggregation, boolean windowStart, boolean windowEnd, boolean aggregationStartTime,
@@ -66,12 +66,13 @@ public class AggregateRichWindowFunction extends RichWindowFunction<Map<String, 
                     Collector<byte[]> collector) throws Exception {
     // start aggregations
     if (aggregationStartTime){
-      record.put("aggregation_start_time", new Date().getTime());
+      record.put("aggregation_start_time", Instant.now().toEpochMilli());
     }
     for (String outputName : fieldsToAggregation.keySet()) {
       Map<String, String> aggregationToFeature = fieldsToAggregation.get(outputName);
       for (String field : aggregationToFeature.keySet()) {
-        Object aggValue = windowAggregationStats(field, aggregationToFeature.get(field), iterable);
+        Object aggValue = windowAggregationStats(field, aggregationToFeature.get(field),
+            this.descriptiveStatisticsContainer.get(outputName), iterable);
         record.put(outputName, aggValue);
       }
     }
@@ -83,16 +84,18 @@ public class AggregateRichWindowFunction extends RichWindowFunction<Map<String, 
       record.put("end",  timeWindow.getStart());
     }
     if (aggregationEndTime){
-      record.put("aggregation_end_time",  new Date().getTime());
+      record.put("aggregation_end_time",  Instant.now().toEpochMilli());
     }
     collector.collect(encode(record));
   }
 
   @Override
   public void open(Configuration parameters) {
-    this.descriptiveStatistics = new DescriptiveStatistics();
     this.schema = new Schema.Parser().parse(this.schemaString);
     this.record = new GenericData.Record(this.schema);
+    for (String outputName : fieldsToAggregation.keySet()) {
+      this.descriptiveStatisticsContainer.put(outputName, new DescriptiveStatistics());
+    }
   }
 
   private byte[] encode(GenericRecord record) throws IOException {
@@ -111,22 +114,19 @@ public class AggregateRichWindowFunction extends RichWindowFunction<Map<String, 
     return bytes;
   }
 
-  private Long processingDelay(Long eventTimeStamp, Long aggregationEndTime) {
-    return (aggregationEndTime - eventTimeStamp);
+  private Long processingDelay(long eventTimeStamp) {
+    return (Instant.now().toEpochMilli() - eventTimeStamp);
   }
 
-  private Object windowAggregationStats(String field, String method, Iterable<Map<String, Object>> iterable) {
-
+  private Object windowAggregationStats(String field, String method, DescriptiveStatistics descriptiveStatistics,
+                                        Iterable<Map<String, Object>> iterable) {
     long count = 0;
+    // long maxProcessingDelay = 0;
     for (Map<String, Object> data: iterable) {
       count++;
       if (!specMethods.contains(method)){
         descriptiveStatistics.addValue((double) data.get(field));
-      }
-      if (method.equals("max_processing_delay")) {
-        descriptiveStatistics.addValue((double) processingDelay((long) data.get(field), new Date().getTime()));
-      }
-      if (method.equals("max_event_timestamp")) {
+      } else if (method.equals("max_event_timestamp_fn")) {
         descriptiveStatistics.addValue(Double.valueOf((long) data.get(field)));
       }
     }
@@ -141,10 +141,7 @@ public class AggregateRichWindowFunction extends RichWindowFunction<Map<String, 
       case "max":
         // max
         return descriptiveStatistics.getMax();
-      case "max_processing_delay":
-        // max
-        return Math.round(descriptiveStatistics.getMax());
-      case "max_event_timestamp":
+      case "max_event_timestamp_fn":
         // max
         return Math.round(descriptiveStatistics.getMax());
       case "sum":

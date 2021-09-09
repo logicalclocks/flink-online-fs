@@ -2,6 +2,7 @@ package com.logicalclocks.aggregations;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.logicalclocks.aggregations.functions.AggregateRichWindowFunction;
+import com.logicalclocks.aggregations.functions.OnEveryElementTrigger;
 import com.logicalclocks.aggregations.synk.AvroKafkaSink;
 import com.logicalclocks.aggregations.utils.Utils;
 import com.logicalclocks.hsfs.Feature;
@@ -113,6 +114,7 @@ public class Aggregations {
         sourceStream.keyBy(r -> r.get(keyName))
             .window(utils.inferWindowType(windowType, utils.inferTimeSize(windowSize, windowTimeUnit),
                 utils.inferTimeSize(slideSize, slideTimeUnit), utils.inferTimeSize(gapSize, gapTimeUnit)))
+            .trigger(new OnEveryElementTrigger())
             .apply(new AggregateRichWindowFunction(primaryKeys.get(0), featureGroup.getDeserializedAvroSchema(),
                 aggregations, windowStart, windowEnd, aggregationStartTime, aggregationEndTime));
 

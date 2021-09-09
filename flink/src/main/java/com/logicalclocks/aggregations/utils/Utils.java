@@ -1,7 +1,7 @@
 package com.logicalclocks.aggregations.utils;
 
+import com.logicalclocks.aggregations.functions.HsfsKafkaDeserializer;
 import com.logicalclocks.aggregations.functions.OutOfOrdernessTimestampAndWatermarksAssigner;
-import com.logicalclocks.aggregations.functions.StringToMapDeserializationSchema;
 import com.logicalclocks.hsfs.FeatureGroup;
 import com.logicalclocks.hsfs.FeatureStore;
 import com.logicalclocks.hsfs.FeatureStoreException;
@@ -102,7 +102,7 @@ public class Utils {
 
     Properties kafkaProperties = getKafkaProperties();
     FlinkKafkaConsumerBase<Map<String, Object>> kafkaSource = new FlinkKafkaConsumer<>(
-        sourceTopic, new StringToMapDeserializationSchema(sourceFieldNames, timestampField, eventTimeFormat,
+        sourceTopic, new HsfsKafkaDeserializer(sourceFieldNames, timestampField, eventTimeFormat,
         eventTimeType,  isNestedSchema), kafkaProperties)
         .setStartFromLatest()
         .assignTimestampsAndWatermarks(new OutOfOrdernessTimestampAndWatermarksAssigner(
@@ -123,7 +123,7 @@ public class Utils {
 
     Properties kafkaProperties = getKafkaProperties(propsMap);
     FlinkKafkaConsumerBase<Map<String, Object>> kafkaSource = new FlinkKafkaConsumer<>(
-          sourceTopic, new StringToMapDeserializationSchema(sourceFieldNames, timestampField, eventTimeFormat,
+          sourceTopic, new HsfsKafkaDeserializer(sourceFieldNames, timestampField, eventTimeFormat,
         eventTimeType, isNestedSchema), kafkaProperties)
         .setStartFromLatest()
         .assignTimestampsAndWatermarks(new OutOfOrdernessTimestampAndWatermarksAssigner(
