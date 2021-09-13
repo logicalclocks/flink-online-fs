@@ -86,6 +86,9 @@ public class AggregateRichWindowFunction extends RichWindowFunction<Map<String, 
     if (aggregationEndTime){
       record.put("aggregation_end_time",  Instant.now().toEpochMilli());
     }
+    // Just a dummy values here, online fs will overwrite this values
+    record.put("bench_commit_time",  Instant.now().toEpochMilli());
+    record.put("kafka_timestamp",  Instant.now().toEpochMilli());
     collector.collect(encode(record));
   }
 

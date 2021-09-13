@@ -1,18 +1,18 @@
 {
-  "feature_group_name":"test_fg",
-  "feature_group_version": 10,
+  "feature_group_name":"flink_test_fg",
+  "feature_group_version": 2,
   "parallelism": 4,
   "key": "customer_id",
   "event_time": "received_ts",
   "event_time_type": "String",
   "event_time_format": "yyyy-MM-dd'T'HH:mm:ss.SSS",
-  "window_size": 1,
-  "window_time_unit": "hours",
+  "window_size": 7,
+  "window_time_unit": "days",
   "watermark": 2,
-  "watermark_time_unit": "hours",
+  "watermark_time_unit": "days",
   "window_type": "sliding",
-  "slide_size": 30,
-  "slide_time_unit": "minutes",
+  "slide_size": 1,
+  "slide_time_unit": "days",
   "gap_size": 0,
   "gap_time_unit": "minutes",
   "aggregations" : {
@@ -25,7 +25,7 @@
     "max_deserialization_timestamp" : {
       "deserializationTimestamp": "max_event_timestamp_fn"
     },
-    "max_kafka_commit_timestamp" : {
+    "max_kafka_event_commit_timestamp" : {
       "kafkaCommitTimestamp": "max_event_timestamp_fn"
     }
   },
@@ -37,7 +37,7 @@
   "online_source": {
     "external_kafka": false,
     "topic_name":
-    "performance_test_events_5",
+    "flink_test",
     "nested_schema": true,
     "external_kafka_config": {
       "kafka.bootstrap.servers": "streamfsp.servicebus.windows.net:9093",
