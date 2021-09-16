@@ -1,0 +1,68 @@
+{
+  "type": "record",
+  "namespace": "com.logicalclocks.aggregations.avroSchemas",
+  "name": "StoreEvent",
+  "version": "1",
+  "fields": [
+    {
+      "name": "event_type",
+      "type": "string"
+    },
+    {
+      "name": "event_id",
+      "type": "string"
+    },
+    {
+      "name" : "received_ts",
+      "type" : "string"
+    },
+    {
+      "name": "EventDefinitions",
+      "type": {
+        "type": "record",
+        "name": "definitions",
+        "fields": [
+          {
+            "name": "contexts",
+            "type": {
+              "type": "record",
+              "name": "contexts",
+              "fields": [
+                {
+                  "name": "userContext",
+                  "type": {
+                    "type": "record",
+                    "name": "userContext",
+                    "fields": [
+                      {
+                        "name": "customer_id",
+                        "type": "string"
+                      },
+                      {
+                        "name": "customer_gender",
+                        "type": "string"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "name": "sessionContext",
+                  "type": {
+                    "type": "record",
+                    "name": "sessionContext",
+                    "fields": [
+                      {
+                        "name": "touchpoint",
+                        "type": "string"
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

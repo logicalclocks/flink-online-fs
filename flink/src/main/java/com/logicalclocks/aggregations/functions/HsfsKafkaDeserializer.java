@@ -80,8 +80,14 @@ public class HsfsKafkaDeserializer implements KafkaDeserializationSchema<Map<Str
     }
     Long timeStamp;
     if (eventTimeType.toLowerCase().equals("string")) {
-      SimpleDateFormat dateFormat = new SimpleDateFormat(eventTimeFormat);
-      timeStamp = dateFormat.parse(datetimeField).getTime();
+      try{
+        SimpleDateFormat dateFormat = new SimpleDateFormat(eventTimeFormat);
+        timeStamp = dateFormat.parse(datetimeField).getTime();
+      } catch(ParseException e) {
+        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
+        timeStamp = dateFormat.parse(datetimeField).getTime();
+      }
+
     } else if (eventTimeType.toLowerCase().equals("long")) {
       timeStamp = Long.valueOf(datetimeField);
     } else {

@@ -1,7 +1,9 @@
 {
+  "projectName": "fs_poc",
+  "stateBackend": "rocksDBStateBackend",
   "feature_group_name":"flink_test_fg",
-  "feature_group_version": 2,
-  "parallelism": 4,
+  "feature_group_version": 11,
+  "parallelism": 10,
   "key": "customer_id",
   "event_time": "received_ts",
   "event_time_type": "String",
@@ -37,7 +39,7 @@
   "online_source": {
     "external_kafka": false,
     "topic_name":
-    "flink_test",
+    "flink_test_5",
     "nested_schema": true,
     "external_kafka_config": {
       "kafka.bootstrap.servers": "streamfsp.servicebus.windows.net:9093",

@@ -167,6 +167,25 @@
         </dependency>
 
         <dependency>
+            <groupId>org.apache.avro</groupId>
+            <artifactId>avro</artifactId>
+            <version>${avro.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.flink</groupId>
+            <artifactId>flink-statebackend-rocksdb_2.11</artifactId>
+            <version>${flink.version}</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.apache.flink</groupId>
+                    <artifactId>flink-shaded-hadoop2</artifactId>
+                </exclusion>
+            </exclusions>
+            <scope>provided</scope>
+        </dependency>
+
+        <dependency>
             <groupId>org.apache.httpcomponents</groupId>
             <artifactId>httpclient</artifactId>
             <version>${httpclient.version}</version>
@@ -258,6 +277,24 @@
         </dependency>
 
         <dependency>
+            <groupId>org.apache.avro</groupId>
+            <artifactId>avro-maven-plugin</artifactId>
+            <version>${avro.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.avro</groupId>
+            <artifactId>avro-compiler</artifactId>
+            <version>${avro.version}</version>
+        </dependency>
+        <!--
+        <dependency>
+            <groupId>org.apache.avro</groupId>
+            <artifactId>avro-ipc</artifactId>
+            <version>${avro.version}</version>
+        </dependency>
+        -->
+
+        <dependency>
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-math</artifactId>
             <version>2.2</version>
@@ -330,8 +367,6 @@
                 </executions>
             </plugin>
 
-            <!--for specific record-->
-            <!--
             <plugin>
                 <groupId>org.apache.avro</groupId>
                 <artifactId>avro-maven-plugin</artifactId>
@@ -344,17 +379,10 @@
                             <goal>protocol</goal>
                             <goal>idl-protocol</goal>
                         </goals>
-                        <configuration>
-                            <sourceDirectory>flink/src/main/resources/avro</sourceDirectory>
-                            <stringType>String</stringType>
-                            <createSetters>true</createSetters>
-                            <enableDecimalLogicalType>true</enableDecimalLogicalType>
-                            <fieldVisibility>private</fieldVisibility>
-                        </configuration>
                     </execution>
                 </executions>
             </plugin>
-            -->
+
         </plugins>
     </build>
 

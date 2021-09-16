@@ -78,10 +78,10 @@ public class AggregateRichWindowFunction extends RichWindowFunction<Map<String, 
     }
     record.put(primaryKeyName, key);
     if (windowStart) {
-      record.put("start",  timeWindow.getEnd());
+      record.put("start", timeWindow.getStart());
     }
     if (windowEnd) {
-      record.put("end",  timeWindow.getStart());
+      record.put("end", timeWindow.getEnd());
     }
     if (aggregationEndTime){
       record.put("aggregation_end_time",  Instant.now().toEpochMilli());

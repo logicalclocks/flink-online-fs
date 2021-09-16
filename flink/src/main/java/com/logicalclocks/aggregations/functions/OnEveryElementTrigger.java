@@ -11,8 +11,14 @@ public class OnEveryElementTrigger extends Trigger<Object, TimeWindow> {
   }
 
   public TriggerResult onElement(Object element, long timestamp, TimeWindow window, TriggerContext ctx) throws Exception {
-    ctx.registerEventTimeTimer(window.maxTimestamp());
-    return TriggerResult.FIRE;
+    if (window.maxTimestamp() <= ctx.getCurrentWatermark()) {
+      return TriggerResult.FIRE;
+    } else {
+      ctx.registerEventTimeTimer(window.maxTimestamp());
+      //return TriggerResult.CONTINUE;
+      // fire on every element
+      return TriggerResult.FIRE;
+    }
   }
 
   public TriggerResult onEventTime(long time, TimeWindow window, TriggerContext ctx) {

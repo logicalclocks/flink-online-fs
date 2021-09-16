@@ -1,7 +1,7 @@
 package com.logicalclocks.aggregations;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.logicalclocks.aggregations.functions.AggregateRichWindowFunction;
+import com.logicalclocks.aggregations.functions.CountAggregate;
 import com.logicalclocks.aggregations.functions.OnEveryElementTrigger;
 import com.logicalclocks.aggregations.synk.AvroKafkaSink;
 import com.logicalclocks.aggregations.utils.Utils;
@@ -9,6 +9,8 @@ import com.logicalclocks.hsfs.Feature;
 import com.logicalclocks.hsfs.FeatureGroup;
 import com.logicalclocks.hsfs.FeatureStore;
 
+import org.apache.flink.contrib.streaming.state.RocksDBStateBackend;
+import org.apache.flink.runtime.state.filesystem.FsStateBackend;
 import org.apache.flink.streaming.api.TimeCharacteristic;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
@@ -40,6 +42,8 @@ public class Aggregations {
       throw new Exception(e.toString());
     }
 
+    String projectName = (String) aggregationSpecs.get("projectName");
+    String stateBackend = (String) aggregationSpecs.get("stateBackend");
     String keyName = (String) aggregationSpecs.get("key");
     Map<Object, Object> onlineSource = (Map<Object, Object>) aggregationSpecs.get("online_source");
     String source_topic = (String) onlineSource.get("topic_name");
@@ -77,6 +81,17 @@ public class Aggregations {
     env.getConfig().enableObjectReuse();
     env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime);
     env.setParallelism(parallelism);
+    env.enableCheckpointing(30000);
+
+    if (stateBackend.equals("rocksDBStateBackend")) {
+      RocksDBStateBackend rocksDBStateBackend = new RocksDBStateBackend("hdfs:///Projects/" +
+          projectName + "/Resources/flink", true);
+      env.setStateBackend(rocksDBStateBackend);
+    } else if (stateBackend.equals("fsStateBackend")) {
+      FsStateBackend fsStateBackend = new FsStateBackend("hdfs:///Projects/" +
+          projectName + "/Resources/flink");
+      env.setStateBackend(fsStateBackend);
+    }
 
     // get source stream
     DataStream<Map<String, Object>> sourceStream;
@@ -109,19 +124,27 @@ public class Aggregations {
       }
     }
 
-    // compute aggregations
-    DataStream<byte[]> aggregationStream =
-        sourceStream.keyBy(r -> r.get(keyName))
-            .window(utils.inferWindowType(windowType, utils.inferTimeSize(windowSize, windowTimeUnit),
-                utils.inferTimeSize(slideSize, slideTimeUnit), utils.inferTimeSize(gapSize, gapTimeUnit)))
-            .trigger(new OnEveryElementTrigger())
-            .apply(new AggregateRichWindowFunction(primaryKeys.get(0), featureGroup.getDeserializedAvroSchema(),
-                aggregations, windowStart, windowEnd, aggregationStartTime, aggregationEndTime));
+    windowType = "tumbling";
+    DataStream<byte[]> aggregationStream = sourceStream
+        .rescale()
+        .rebalance()
+        .keyBy(r -> r.get(keyName))
+        .filter(r -> r.get("event_type").equals("ADD_TO_BAG"))
+        .keyBy(r -> r.get(keyName))
+        .window(utils.inferWindowType(windowType, utils.inferTimeSize(windowSize, windowTimeUnit),
+            utils.inferTimeSize(slideSize, slideTimeUnit), utils.inferTimeSize(gapSize, gapTimeUnit)))
+        .trigger(new OnEveryElementTrigger())
+        //.trigger(new CountTrigger(1))
+        .aggregate(new CountAggregate(), new CountAggregate.MyRichWindowFunction(keyName,
+            featureGroup.getDeserializedAvroSchema()));
 
     //send to online fg topic
     Properties featureGroupKafkaPropertiies = utils.getKafkaProperties(featureGroup);
-    aggregationStream.addSink(new FlinkKafkaProducer<byte[]>(featureGroup.getOnlineTopicName(),
-        new AvroKafkaSink(String.join(",", primaryKeys), featureGroup.getOnlineTopicName()),
+    aggregationStream
+        .rescale()
+        .rebalance()
+        .addSink(new FlinkKafkaProducer<byte[]>(featureGroup.getOnlineTopicName(),
+        new AvroKafkaSink(keyName, featureGroup.getOnlineTopicName()),
         featureGroupKafkaPropertiies,
         FlinkKafkaProducer.Semantic.AT_LEAST_ONCE));
 
