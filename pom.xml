@@ -139,7 +139,6 @@
                     <artifactId>flink-shaded-hadoop2</artifactId>
                 </exclusion>
             </exclusions>
-            <scope>provided</scope>
         </dependency>
 
         <dependency>
