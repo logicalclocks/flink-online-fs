@@ -17,7 +17,6 @@ import org.apache.flink.streaming.api.windowing.assigners.WindowAssigner;
 import org.apache.flink.streaming.api.windowing.time.Time;
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer;
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumerBase;
-import org.apache.flink.streaming.connectors.kafka.FlinkKafkaProducer;
 
 import java.util.Map;
 import java.util.Properties;
@@ -103,6 +102,7 @@ public class StreamFeatureGroupExample {
     StreamFeatureGroup featureGroup = fs.getStreamFeatureGroup("card_transactions_10m_agg", 1);
 
     Properties kafkaProperties = utils.getKafkaProperties(featureGroup, null);
+    kafkaProperties.put("group.id", "console-consumer-myapp");
     
     FlinkKafkaConsumerBase<SourceTransaction> transactionFlinkKafkaConsumerBase =
       new FlinkKafkaConsumer<>(sourceTopic, new TransactionsDeserializer(), kafkaProperties)
@@ -119,7 +119,7 @@ public class StreamFeatureGroupExample {
       aggregationStream = env.addSource(transactionFlinkKafkaConsumerBase)
       .rescale()
       .rebalance()
-      .keyBy(r -> r.getCcNumber())
+      .keyBy(r -> r.getCcNum())
       .window(TumblingEventTimeWindows.of(Time.minutes(10)))
       .aggregate(new CountAggregate());
     

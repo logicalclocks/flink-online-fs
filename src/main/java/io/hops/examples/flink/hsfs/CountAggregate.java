@@ -17,7 +17,7 @@ public class CountAggregate implements AggregateFunction<SourceTransaction,
   @Override
   public Tuple4<Long, Long, Double, Double> add(SourceTransaction record, Tuple4<Long, Long, Double, Double>
     accumulator) {
-    return new Tuple4<>(record.getCcNumber(), accumulator.f1 + 1, accumulator.f2 + record.getAmount(), 0.0);
+    return new Tuple4<>(record.getCcNum(), accumulator.f1 + 1, accumulator.f2 + record.getAmount(), 0.0);
   }
 
   @Override
