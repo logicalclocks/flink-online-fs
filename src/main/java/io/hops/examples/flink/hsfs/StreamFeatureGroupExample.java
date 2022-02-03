@@ -1,128 +1,35 @@
 package io.hops.examples.flink.hsfs;
 
-import com.logicalclocks.hsfs.FeatureGroup;
 import com.logicalclocks.hsfs.FeatureStore;
 import com.logicalclocks.hsfs.HopsworksConnection;
 import com.logicalclocks.hsfs.StreamFeatureGroup;
 
 import com.logicalclocks.hsfs.engine.FeatureGroupUtils;
 
-import com.logicalclocks.hsfs.engine.flink.OnlineFeatureGroupGenericRecordWriter;
-import com.logicalclocks.hsfs.engine.flink.OnlineFeatureGroupKafkaSink;
 import com.logicalclocks.hsfs.metadata.KafkaApi;
-import org.apache.commons.io.FileUtils;
 import org.apache.flink.streaming.api.TimeCharacteristic;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.timestamps.BoundedOutOfOrdernessTimestampExtractor;
-import org.apache.flink.streaming.api.windowing.assigners.EventTimeSessionWindows;
-import org.apache.flink.streaming.api.windowing.assigners.SlidingEventTimeWindows;
 import org.apache.flink.streaming.api.windowing.assigners.TumblingEventTimeWindows;
-import org.apache.flink.streaming.api.windowing.assigners.WindowAssigner;
 import org.apache.flink.streaming.api.windowing.time.Time;
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer;
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumerBase;
-import org.apache.flink.streaming.connectors.kafka.FlinkKafkaProducer;
 
-import java.io.File;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
-import java.util.stream.Collectors;
 
 public class StreamFeatureGroupExample {
 
   private FeatureGroupUtils utils = new FeatureGroupUtils();
   private KafkaApi kafkaApi = new KafkaApi();
-
-  public Time inferTimeSize (Integer size, String timeUnit) throws Exception {
-    switch (timeUnit.toLowerCase()) {
-      case "milliseconds":
-        return size > 0 ? Time.milliseconds(size): null;
-      case "seconds":
-        return size > 0 ? Time.seconds(size): null;
-      case "minutes":
-        return size > 0 ? Time.minutes(size): null;
-      case "hours":
-        return size > 0 ? Time.hours(size): null;
-      case "days":
-        return size > 0 ? Time.days(size): null;
-      default:
-        throw new Exception("Only milliseconds, seconds, minutes, hours and days are accepted as time units");
-    }
-  }
-
-  public WindowAssigner inferWindowType(String windowType, Time size, Time slide, Time gap) throws Exception {
-    switch (windowType.toLowerCase()) {
-      case "tumbling":
-        if (size == null) {
-          throw new Exception("for tumbling window types window size is required to be more than 0!");
-        }
-        return TumblingEventTimeWindows.of(size);
-      case "sliding":
-        if (size == null || slide == null ) {
-          throw new Exception("for sliding window types both window size and slide size are required to be more " +
-            "than 0!");
-        }
-        return SlidingEventTimeWindows.of(size, slide);
-      case "session":
-        if (gap == null) {
-          throw new Exception("sliding window types slide size is required to be more than 0!");
-        }
-        return EventTimeSessionWindows.withGap(gap);
-      default:
-        throw new Exception("Only tumbling, sliding and session are accepted as window types");
-    }
-  }
-  
-  public Properties getKafkaProperties(StreamFeatureGroup featureGroup) throws Exception {
-    Properties dataKafkaProps = new Properties();
-    //Map<String, String> dataKafkaProps = new HashMap<>();
-    String materialPasswd = readMaterialPassword();
-    dataKafkaProps.put("bootstrap.servers",
-      kafkaApi.getBrokerEndpoints(featureGroup.getFeatureStore()).stream().map(broker -> broker.replaceAll(
-        "INTERNAL://", "")).collect(Collectors.joining(",")));
-    // These settings are static and they don't need to be changed
-    dataKafkaProps.put("security.protocol", "SSL");
-    dataKafkaProps.put("ssl.truststore.location", "t_certificate");
-    dataKafkaProps.put("ssl.truststore.password", materialPasswd);
-    dataKafkaProps.put("ssl.keystore.location", "k_certificate");
-    dataKafkaProps.put("ssl.keystore.password", materialPasswd);
-    dataKafkaProps.put("ssl.key.password", materialPasswd);
-    dataKafkaProps.put("ssl.endpoint.identification.algorithm", "");
-    dataKafkaProps.put("group.id",  "dummy_group_id");
-    
-    return dataKafkaProps;
-  }
-  
-  private static String readMaterialPassword() throws Exception {
-    return FileUtils.readFileToString(new File("material_passwd"));
-  }
   
   public void run() throws Exception {
 
-    String keyName = "cc_num";
     String windowType = "tumbling";
     String sourceTopic = "credit_card_transactions";
-
-    /*
-    String timestampField = null;
-    String eventTimeFormat = null;
-    String eventTimeType = null;
-    Integer watermarkSize = null;
-    String watermarkTimeUnit = null;
-     */
-
     Time maxOutOfOrderness = Time.seconds(60);
-
-    Integer windowSize = 10;
-    String windowTimeUnit = "minutes";
-    String slideTimeUnit = null;
-    Integer slideSize = null;
-
-    Integer gapSize = null;
-    String gapTimeUnit = null;
-
+    
     // define flink env
     StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
     env.getConfig().enableObjectReuse();
@@ -132,12 +39,12 @@ public class StreamFeatureGroupExample {
     //get feature store handle
     FeatureStore fs = HopsworksConnection.builder().build().getFeatureStore();
 
-    // get streaming feature groups
+    // get stream feature group
     StreamFeatureGroup featureGroup = fs.getStreamFeatureGroup("card_transactions_10m_agg", 1);
 
-    Properties kafkaProperties = getKafkaProperties(featureGroup); //utils.getKafkaProperties(featureGroup, getKafkaProperties
-      // (featureGroup));
+    Properties kafkaProperties = utils.getKafkaProperties(featureGroup, null);
     
+    // get raw data from the source
     FlinkKafkaConsumerBase<SourceTransaction> transactionFlinkKafkaConsumerBase =
       new FlinkKafkaConsumer<>(sourceTopic, new TransactionsDeserializer(), kafkaProperties)
         .setStartFromLatest()
@@ -149,6 +56,7 @@ public class StreamFeatureGroupExample {
             }
           });
 
+    // aggregate stream and return  DataStream<Map<String, Object>>
     DataStream<Map<String, Object>>
       aggregationStream = env.addSource(transactionFlinkKafkaConsumerBase)
       .rescale()
@@ -157,16 +65,9 @@ public class StreamFeatureGroupExample {
       .window(TumblingEventTimeWindows.of(Time.minutes(10)))
       .aggregate(new CountAggregate());
     
-    //featureGroup.insertStream(aggregationStream, getKafkaProperties(featureGroup));
-    aggregationStream
-      .map(new OnlineFeatureGroupGenericRecordWriter(featureGroup.getDeserializedAvroSchema()))
-      .rescale()
-      .rebalance()
-      .addSink(new FlinkKafkaProducer<byte[]>(featureGroup.getOnlineTopicName(),
-        new OnlineFeatureGroupKafkaSink(featureGroup.getPrimaryKeys().get(0),
-          featureGroup.getOnlineTopicName()),
-        getKafkaProperties(featureGroup),
-        FlinkKafkaProducer.Semantic.AT_LEAST_ONCE));
+    // insert stream
+    featureGroup.insertStream(aggregationStream);
+    
     env.execute("Window aggregation of " + windowType);
   }
 
