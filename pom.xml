@@ -25,7 +25,7 @@
     <name>hops-examples-flink</name>
 
     <properties>
-        <flink.version>1.9.2</flink.version>
+        <flink.version>1.14.3</flink.version>
         <kafka.version>2.2.0</kafka.version>
         <jodatime.version>2.10.2</jodatime.version>
         <scala.base>2.11</scala.base>
@@ -99,20 +99,6 @@
             </exclusions>
             <scope>provided</scope>
         </dependency>
-
-        <dependency>
-            <groupId>org.apache.flink</groupId>
-            <artifactId>flink-table-planner-blink_${scala.base}</artifactId>
-            <version>${flink.version}</version>
-            <exclusions>
-                <exclusion>
-                    <groupId>org.apache.flink</groupId>
-                    <artifactId>flink-shaded-hadoop2</artifactId>
-                </exclusion>
-            </exclusions>
-            <scope>provided</scope>
-        </dependency>
-
 
         <!-- connector dependencies -->
         <dependency>
