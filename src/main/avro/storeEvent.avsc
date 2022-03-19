@@ -1,0 +1,81 @@
+{
+  "type": "record",
+  "namespace": "io.hops.examples.flink.hsfs",
+  "name": "StoreEvent",
+  "version": "1",
+  "fields": [
+    {
+      "name": "event_type",
+      "type": "string"
+    },
+    {
+      "name": "event_id",
+      "type": "string"
+    },
+    {
+      "name" : "received_ts",
+      "type" : "long"
+    },
+
+    {
+      "name" : "key",
+      "type" : ["null","string"]
+    },
+    {
+      "name" : "deserializationTimestamp",
+      "type" : ["null","long"]
+    },
+    {
+      "name" : "kafkaCommitTimestamp",
+      "type" : ["null","long"]
+    },
+    {
+      "name": "EventDefinitions",
+      "type": {
+        "type": "record",
+        "name": "definitions",
+        "fields": [
+          {
+            "name": "contexts",
+            "type": {
+              "type": "record",
+              "name": "contexts",
+              "fields": [
+                {
+                  "name": "userContext",
+                  "type": {
+                    "type": "record",
+                    "name": "userContext",
+                    "fields": [
+                      {
+                        "name": "customer_id",
+                        "type": "string"
+                      },
+                      {
+                        "name": "customer_gender",
+                        "type": "string"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "name": "sessionContext",
+                  "type": {
+                    "type": "record",
+                    "name": "sessionContext",
+                    "fields": [
+                      {
+                        "name": "touchpoint",
+                        "type": "string"
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

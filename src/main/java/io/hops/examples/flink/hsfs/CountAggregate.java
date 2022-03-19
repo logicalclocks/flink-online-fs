@@ -11,7 +11,7 @@ public class CountAggregate implements AggregateFunction<SourceTransaction,
 
   @Override
   public Tuple4<Long, Long, Double, Double> createAccumulator() {
-    return new Tuple4<>(0L, 0L,0.0,0.0);
+    return new Tuple4<>(0L,0L,0.0,0.0);
   }
 
   @Override
