@@ -48,12 +48,12 @@ public class StreamFeatureGroupExample {
     // get stream feature group
     StreamFeatureGroup featureGroup;
     try {
-      featureGroup = fs.getStreamFeatureGroup("card_transactions_10m_agg", 1);
+      featureGroup = fs.getStreamFeatureGroup("card_transactions_10m_agg", 2);
     } catch (java.io.IOException e) {
       featureGroup = (fs.createStreamFeatureGroup()
         .name("card_transactions_10m_agg")
         .description("card_transactions_10m_agg")
-        .version(1)
+        .version(2)
         .primaryKeys(Collections.singletonList("cc_num"))
         .statisticsConfig(new StatisticsConfig(false, false, false, false))
         .build());
@@ -62,7 +62,8 @@ public class StreamFeatureGroupExample {
         Column.physical("cc_num", DataTypes.BIGINT()),
         Column.physical("num_trans_per_10m", DataTypes.BIGINT()),
         Column.physical("avg_amt_per_10m", DataTypes.DOUBLE()),
-        Column.physical("stdev_amt_per_10m", DataTypes.DOUBLE()));
+        Column.physical("stdev_amt_per_10m", DataTypes.DOUBLE()),
+        Column.physical("complex_feature", DataTypes.ARRAY(DataTypes.DOUBLE())));
       
       featureGroup.save(schema, null);
     }

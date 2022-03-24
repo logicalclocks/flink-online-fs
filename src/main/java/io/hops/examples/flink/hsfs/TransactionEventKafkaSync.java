@@ -15,7 +15,7 @@ public class TransactionEventKafkaSync implements SerializationSchema<SourceTran
   public byte[] serialize(SourceTransaction transactionEvent) {
     ByteArrayOutputStream out = new ByteArrayOutputStream();
     BinaryEncoder encoder = EncoderFactory.get().binaryEncoder(out, null);
-    DatumWriter<SourceTransaction> dataFileWriter = new SpecificDatumWriter<SourceTransaction>(transactionEvent.getSchema());
+    DatumWriter<SourceTransaction> dataFileWriter = new SpecificDatumWriter<>(transactionEvent.getSchema());
     dataFileWriter.write(transactionEvent, encoder);
     encoder.flush();
     return out.toByteArray();
