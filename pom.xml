@@ -18,7 +18,7 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <groupId>io.hops</groupId>
-    <version>2.6.0-SNAPSHOT</version>
+    <version>3.1.0-SNAPSHOT</version>
 
     <artifactId>hops-examples-flink</artifactId>
     <packaging>jar</packaging>
@@ -30,6 +30,8 @@
         <jodatime.version>2.10.2</jodatime.version>
         <scala.base>2.11</scala.base>
         <avro.version>1.10.1</avro.version>
+        <slf4j.version>1.7.30</slf4j.version>
+        <log4j.version>1.2.17</log4j.version>
     </properties>
 
     <dependencies>
@@ -128,6 +130,21 @@
             <artifactId>hsfs</artifactId>
             <version>${project.version}</version>
         </dependency>
+
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-log4j12</artifactId>
+            <version>${slf4j.version}</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>log4j</groupId>
+            <artifactId>log4j</artifactId>
+            <version>${log4j.version}</version>
+            <scope>provided</scope>
+        </dependency>
+
     </dependencies>
 
     <build>
@@ -214,4 +231,27 @@
 
         </plugins>
     </build>
+
+    <repositories>
+        <repository>
+            <id>Hops</id>
+            <name>Hops Repo</name>
+            <url>https://archiva.hops.works/repository/Hops/</url>
+            <releases>
+                <enabled>true</enabled>
+            </releases>
+            <snapshots>
+                <enabled>true</enabled>
+            </snapshots>
+        </repository>
+    </repositories>
+
+    <distributionManagement>
+        <repository>
+            <id>Hops</id>
+            <name>Hops Repo</name>
+            <url>https://archiva.hops.works/repository/Hops/</url>
+        </repository>
+    </distributionManagement>
+
 </project>

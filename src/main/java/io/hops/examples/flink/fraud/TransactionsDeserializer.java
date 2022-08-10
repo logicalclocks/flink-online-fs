@@ -1,20 +1,11 @@
-package io.hops.examples.flink.hsfs;
+package io.hops.examples.flink.fraud;
 
-import org.apache.avro.file.DataFileReader;
-import org.apache.avro.file.SeekableByteArrayInput;
-import org.apache.avro.io.BinaryDecoder;
-import org.apache.avro.io.DatumReader;
-import org.apache.avro.io.Decoder;
-import org.apache.avro.io.DecoderFactory;
-import org.apache.avro.specific.SpecificDatumReader;
+import io.hops.examples.flink.hsfs.SourceTransaction;
 import org.apache.flink.api.common.serialization.DeserializationSchema;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.formats.avro.AvroDeserializationSchema;
 import org.apache.flink.streaming.connectors.kafka.KafkaDeserializationSchema;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
-
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
 
 /*
 public class TransactionsDeserializer implements DeserializationSchema<SourceTransaction>  {

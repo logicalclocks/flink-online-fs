@@ -2,12 +2,13 @@ package io.hops.examples.flink.hsfs;
 
 import com.logicalclocks.hsfs.FeatureStore;
 import com.logicalclocks.hsfs.HopsworksConnection;
-import com.logicalclocks.hsfs.StatisticsConfig;
 import com.logicalclocks.hsfs.StreamFeatureGroup;
 
 import com.logicalclocks.hsfs.engine.FeatureGroupUtils;
 
 import com.logicalclocks.hsfs.metadata.KafkaApi;
+import io.hops.examples.flink.fraud.CountAggregate;
+import io.hops.examples.flink.fraud.TransactionsDeserializer;
 import org.apache.flink.api.common.eventtime.WatermarkStrategy;
 import org.apache.flink.connector.kafka.source.KafkaSource;
 import org.apache.flink.connector.kafka.source.enumerator.initializer.OffsetsInitializer;
@@ -34,7 +35,7 @@ public class StreamFeatureGroupExample {
   public void run() throws Exception {
 
     String windowType = "tumbling";
-    String sourceTopic = "credit_card_transactions";
+    String sourceTopic = "flink_topic";
     Duration maxOutOfOrderness = Duration.ofSeconds(60);
     
     // define flink env
@@ -45,27 +46,17 @@ public class StreamFeatureGroupExample {
     //get feature store handle
     FeatureStore fs = HopsworksConnection.builder().build().getFeatureStore();
 
-    // get stream feature group
-    StreamFeatureGroup featureGroup;
-    try {
-      featureGroup = fs.getStreamFeatureGroup("card_transactions_10m_agg", 2);
-    } catch (java.io.IOException e) {
-      featureGroup = (fs.createStreamFeatureGroup()
-        .name("card_transactions_10m_agg")
-        .description("card_transactions_10m_agg")
-        .version(2)
-        .primaryKeys(Collections.singletonList("cc_num"))
-        .statisticsConfig(new StatisticsConfig(false, false, false, false))
-        .build());
-  
+    // get or create stream feature group
+    StreamFeatureGroup featureGroup = fs.getOrCreateStreamFeatureGroup("card_transactions_10m_agg", 1,
+      Collections.singletonList("cc_num"), true, null);
+    if (featureGroup.getId() == null){
       ResolvedSchema schema = ResolvedSchema.of(
         Column.physical("cc_num", DataTypes.BIGINT()),
         Column.physical("num_trans_per_10m", DataTypes.BIGINT()),
         Column.physical("avg_amt_per_10m", DataTypes.DOUBLE()),
-        Column.physical("stdev_amt_per_10m", DataTypes.DOUBLE()),
-        Column.physical("complex_feature", DataTypes.ARRAY(DataTypes.DOUBLE())));
-      
-      featureGroup.save(schema, null);
+        Column.physical("stdev_amt_per_10m", DataTypes.DOUBLE()));
+      //        Column.physical("complex_feature", DataTypes.ARRAY(DataTypes.DOUBLE()))
+      featureGroup.insertFlinkStream(schema);
     }
     
     Properties kafkaProperties = utils.getKafkaProperties(featureGroup, null);
@@ -94,7 +85,7 @@ public class StreamFeatureGroupExample {
       .aggregate(new CountAggregate());
     
     // insert stream
-    featureGroup.insertStream(aggregationStream);
+    featureGroup.insertFlinkStream(aggregationStream);
     
     env.execute("Window aggregation of " + windowType);
   }

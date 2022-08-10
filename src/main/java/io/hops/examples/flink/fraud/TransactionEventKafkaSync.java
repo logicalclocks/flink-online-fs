@@ -1,5 +1,6 @@
-package io.hops.examples.flink.hsfs;
+package io.hops.examples.flink.fraud;
 
+import io.hops.examples.flink.hsfs.SourceTransaction;
 import lombok.SneakyThrows;
 import org.apache.avro.io.BinaryEncoder;
 import org.apache.avro.io.DatumWriter;

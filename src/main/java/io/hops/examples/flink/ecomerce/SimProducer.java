@@ -1,10 +1,11 @@
-package io.hops.examples.flink.hsfs;
+package io.hops.examples.flink.ecomerce;
 
-
-import com.logicalclocks.hsfs.FeatureStoreException;
-import com.logicalclocks.hsfs.HopsworksConnection;
-import com.logicalclocks.hsfs.metadata.HopsworksClient;
-import com.logicalclocks.hsfs.metadata.HopsworksHttpClient;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import io.hops.examples.flink.hsfs.SourceTransaction;
+import io.hops.examples.flink.fraud.TransactionEventKafkaSync;
+import io.hops.examples.flink.fraud.TransactionEventSimulator;
+import io.hops.examples.flink.utils.Utils;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -16,36 +17,21 @@ import org.apache.flink.connector.kafka.sink.KafkaSink;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 
-import java.io.IOException;
 import java.util.Properties;
 
 public class SimProducer {
-  
-  private Properties getKafkaProperties(String topic) throws FeatureStoreException, IOException {
-    HopsworksConnection connection = HopsworksConnection.builder().build();
-    HopsworksHttpClient client = HopsworksClient.getInstance().getHopsworksHttpClient();
-    Properties properties = new Properties();
-    properties.put("bootstrap.servers", "broker.kafka.service.consul:9091");
-    properties.put("security.protocol", "SSL");
-    properties.put("ssl.truststore.location", client.getTrustStorePath());
-    properties.put("ssl.truststore.password", client.getCertKey());
-    properties.put("ssl.keystore.location", client.getKeyStorePath());
-    properties.put("ssl.keystore.password", client.getCertKey());
-    properties.put("ssl.key.password", client.getCertKey());
-    properties.put("ssl.endpoint.identification.algorithm", "");
-    properties.put("topic", topic);
-    return properties;
-  }
-  
+  private static final Logger LOG = LoggerFactory.getLogger(SimProducer.class);
+
+  Utils utils = new Utils();
   public void run(String topicName, Integer batchSize) throws Exception {
+    
     // set up streaming execution environment
     StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
     env.setParallelism(1);
-    
+  
     DataStream<SourceTransaction> simEvens =
       env.addSource(new TransactionEventSimulator(batchSize)).keyBy(r -> r.getCcNum());
-  
-    Properties kafkaCinfig = getKafkaProperties(topicName);
+    Properties kafkaCinfig = utils.getKafkaProperties(topicName);
     KafkaSink<SourceTransaction> sink = KafkaSink.<SourceTransaction>builder()
       .setKafkaProducerConfig(kafkaCinfig)
       .setBootstrapServers(kafkaCinfig.getProperty("bootstrap.servers"))
@@ -63,7 +49,6 @@ public class SimProducer {
   }
   
   public static void main(String[] args) throws Exception {
-    
     Options options = new Options();
     
     options.addOption(Option.builder("topicName")

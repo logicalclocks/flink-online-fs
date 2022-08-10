@@ -1,6 +1,6 @@
-package io.hops.examples.flink.hsfs;
+package io.hops.examples.flink.fraud;
 
-import org.apache.flink.api.java.tuple.Tuple2;
+import io.hops.examples.flink.hsfs.SourceTransaction;
 import org.apache.flink.calcite.shaded.org.apache.commons.codec.digest.DigestUtils;
 import org.apache.flink.streaming.api.functions.source.SourceFunction;
 import org.apache.flink.streaming.api.watermark.Watermark;
@@ -8,7 +8,6 @@ import org.apache.flink.streaming.api.watermark.Watermark;
 import java.text.SimpleDateFormat;
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
 

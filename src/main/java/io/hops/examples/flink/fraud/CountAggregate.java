@@ -1,5 +1,6 @@
-package io.hops.examples.flink.hsfs;
+package io.hops.examples.flink.fraud;
 
+import io.hops.examples.flink.hsfs.SourceTransaction;
 import org.apache.flink.api.common.functions.AggregateFunction;
 import org.apache.flink.api.java.tuple.Tuple4;
 
