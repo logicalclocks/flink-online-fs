@@ -2,8 +2,8 @@
 
 #### Step 1:
 ```bash
-git clone https://github.com/davitbzh/feature-store-api.git
-cd feature-store-api 
+git clone https://github.com/logicalclocks/flink-online-fs.git
+cd flink-online-fs
 mvn clean package
 ```
 
